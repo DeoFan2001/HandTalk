@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+	<ImportGroup Label="PropertySheets" />
+
+	<!-- === Пути к OpenCV === -->
+	<PropertyGroup>
+		<IncludePath>$(ProjectDir)opencv\build\include;$(IncludePath)</IncludePath>
+		<LibraryPath>$(ProjectDir)opencv\build\x64\vc16\lib;$(LibraryPath)</LibraryPath>
+	</PropertyGroup>
+
+	<!-- === Зависимости === -->
+	<ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+		<Link>
+			<AdditionalDependencies>opencv_world4100d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+		</Link>
+	</ItemDefinitionGroup>
+
+	<ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+		<Link>
+			<AdditionalDependencies>opencv_world4100.lib;%(AdditionalDependencies)</AdditionalDependencies>
+		</Link>
+	</ItemDefinitionGroup>
+
+	<!-- === Автокопирование DLL + моделей после сборки (Debug) === -->
+	<ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+		<PostBuildEvent>
+			<Command>
+				xcopy /Y /I "$(ProjectDir)opencv\build\x64\vc16\bin\opencv_world4100d.dll" "$(OutDir)"
+				xcopy /Y /I "$(ProjectDir)onnxruntime\lib\onnxruntime.dll" "$(OutDir)"
+				if exist "$(ProjectDir)models" xcopy /Y /I /E "$(ProjectDir)models" "$(OutDir)models\"
+			</Command>
+		</PostBuildEvent>
+	</ItemDefinitionGroup>
+
+	<!-- === Автокопирование DLL + моделей после сборки (Release) === -->
+	<ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+		<PostBuildEvent>
+			<Command>
+				xcopy /Y /I "$(ProjectDir)opencv\build\x64\vc16\bin\opencv_world4100.dll" "$(OutDir)"
+				xcopy /Y /I "$(ProjectDir)onnxruntime\lib\onnxruntime.dll" "$(OutDir)"
+				if exist "$(ProjectDir)models" xcopy /Y /I /E "$(ProjectDir)models" "$(OutDir)models\"
+			</Command>
+		</PostBuildEvent>
+	</ItemDefinitionGroup>
+</Project>

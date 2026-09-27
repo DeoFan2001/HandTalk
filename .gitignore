@@ -1,0 +1,27 @@
+# Visual Studio
+.vs/
+x64/
+Debug/
+Release/
+*.user
+*.suo
+
+# Build outputs
+*.exe
+*.dll
+*.lib
+*.pdb
+*.obj
+*.ilk
+*.exp
+
+# Большие библиотеки — НЕ заливаем в git
+opencv/
+onnxruntime/
+
+# Модели — ОСТАВИТЬ! (10 МБ, нужны для работы)
+# models/*.onnx
+
+# Прочее
+*.log
+*.tmp
