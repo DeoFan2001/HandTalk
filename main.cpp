@@ -98,7 +98,7 @@ int main() {
     if (!palm.init("models\\palm_detection.onnx") || !lm.init("models\\hand_landmark.onnx")) {
         logError("Не удалось загрузить модели из папки models");
         MessageBoxW(nullptr, L"Не найдены файлы моделей в папке models:\npalm_detection.onnx и hand_landmark.onnx.",
-                    L"HandTalk", MB_ICONERROR);
+            L"HandTalk", MB_ICONERROR);
         return -1;
     }
 
@@ -117,7 +117,7 @@ int main() {
         for (const SeqSample& s : dyn) ++counts.move[s.code];
         knn.setSamples(std::move(stat));
         dynKnn.setSamples(std::move(dyn));
-    };
+        };
     {
         int sk = 0, dk = 0;
         auto stat = loadSamples(st.samplesFile, &sk);
@@ -127,7 +127,7 @@ int main() {
         applySamples(std::move(stat), std::move(dyn));
     }
     logInfo("Классификатор: " + std::string(clf->name()) + ", поз: " + std::to_string(knn.size()) +
-            ", движений: " + std::to_string(dynKnn.size()));
+        ", движений: " + std::to_string(dynKnn.size()));
 
     // === ДВИЖОК ЖЕСТОВ И ТЕКСТА ===
     EngineParams ep;
@@ -184,7 +184,7 @@ int main() {
         gs.moveMask = counts.mask(counts.move);
         gs.letterPose = counts.of(counts.pose, code);
         gs.letterMove = counts.of(counts.move, code);
-    };
+        };
     refreshCounts();
 
     // === СОСТОЯНИЕ СЕАНСА ===
@@ -203,7 +203,7 @@ int main() {
     auto removeInactive = [&]() {
         tracks.erase(std::remove_if(tracks.begin(), tracks.end(),
             [](const HandTrack& t) { return !t.active; }), tracks.end());
-    };
+        };
 
     // === НАЧАТЬ ===
     auto startSession = [&]() {
@@ -239,7 +239,7 @@ int main() {
         logInfo("Источник: " + src->name());
         if (gs.source == 4 && !excludeFromCapture(WIN, true))
             setMessage(L"Окно программы может попасть в кадр: поставьте его вне выбранной области");
-    };
+        };
 
     // === ЗАКОНЧИТЬ ===
     auto stopSession = [&]() {
@@ -250,7 +250,7 @@ int main() {
         gs.running = false;
         gs.recording = false;
         logInfo("Остановлено пользователем");
-    };
+        };
 
     // === ОБУЧИТЬ МОДЕЛЬ ===
     auto trainModel = [&]() {
@@ -278,7 +278,7 @@ int main() {
         if (!empty) m += L". Подробности: train_report.txt";
         if (!empty && clf == static_cast<const IClassifier*>(&mlp)) m += L" (позы сейчас распознаёт MLP)";
         setMessage(m, 15);
-    };
+        };
 
     // === ОБРАБОТКА НАЖАТИЙ ===
     bool quit = false;
@@ -307,7 +307,7 @@ int main() {
                     gs.source = 4;
                 }
             }
-            else gs.source = id - ID_SRC_CAM0;
+            else gs.source = std::min(2, std::max(0, st.cameraIndex));     // единственная кнопка камеры: номер из handtalk.ini
             return;
         }
         if (id >= ID_LETTER_BASE) {
@@ -322,6 +322,14 @@ int main() {
         case ID_BACK: eng.text().backspace(); break;
         case ID_CLEAR: eng.text().clear(); break;
         case ID_SPEAK: if (canSpeak) speech.speak(eng.text().text()); break;
+        case ID_ADMIN: gs.admin = true; break;
+        case ID_ADMIN_BACK:
+            if (gs.recording) {                                   // при выходе из раздела запись не оставляем включённой
+                gs.recording = false;
+                setMessage(L"Запись остановлена. Нажмите «Обучить модель», чтобы новые образцы заработали");
+            }
+            gs.admin = false;
+            break;
         case ID_KIND_POSE: gs.kindMove = false; gs.recording = false; break;
         case ID_KIND_MOVE: gs.kindMove = true; gs.recording = false; break;
         case ID_REC:
@@ -347,7 +355,7 @@ int main() {
             break;
         }
         }
-    };
+        };
 
     Hotkey kQ('Q'), kB(VK_BACK), kC('C'), kS('S'), kA('A'), kP('P');
 
@@ -472,7 +480,7 @@ int main() {
                 }
                 if (!o.dynCode.empty())
                     setMessage(L"Движение: " + std::wstring(1, letterFromCode(o.dynCode)) + L" (" +
-                               std::to_wstring((int)(o.dynConf * 100)) + L"%)", 3);
+                        std::to_wstring((int)(o.dynConf * 100)) + L"%)", 3);
 
                 // === 5. РИСУЕМ РУКИ ===
                 for (size_t i = 0; i < tracks.size(); ++i) {
@@ -495,19 +503,19 @@ int main() {
         const std::wstring& txt = eng.text().text();
         if (wrapKey != txt) {                       // перенос строк считаем только при изменении текста
             wrapKey = txt;
-            wrapped = wrapTextW(txt + L"_", 32, Gui::VIDEO_W - 30, 3);
+            wrapped = txt.empty() ? std::vector<std::wstring>() : wrapTextW(txt + L"_", 32, Gui::VIDEO_W - 30, 3);   // пусто - покажется подсказка
         }
         is.lines = wrapped;
 
         std::wstring status;
         if (gs.running) {
             status = L"Рук: " + std::to_wstring(handsCount) + L"  |  " + (o.moving ? L"движение" : L"рука стоит") +
-                     L"  |  " + std::to_wstring((int)(gov.fps() + 0.5)) + L" к/с";
+                L"  |  " + std::to_wstring((int)(gov.fps() + 0.5)) + L" к/с";
             if (gov.eco()) status += L"  |  ЭКОНОМИЯ";
         }
         else status = L"Остановлено";
         status += L"  |  " + asciiToW(clf->name()) + L": поз " + std::to_wstring(knn.size()) +
-                  L", движений " + std::to_wstring(dynKnn.size());
+            L", движений " + std::to_wstring(dynKnn.size());
         is.status = status;
         if (seconds() < messageUntil) is.message = message;
         else if (canSpeak && speech.paused()) is.message = L"Речь на паузе";
