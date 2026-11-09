@@ -1,4 +1,4 @@
-#include "UI.h"
+﻿#include "UI.h"
 #include <windows.h>
 
 namespace HandTracker {

@@ -115,6 +115,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -133,6 +134,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -143,17 +145,46 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Alphabet.h" />
+    <ClInclude Include="Gesture.h" />
+    <ClInclude Include="GestureEngine.h" />
+    <ClInclude Include="Gui.h" />
     <ClInclude Include="HandTracker.h" />
+    <ClInclude Include="Log.h" />
+    <ClInclude Include="MlpClassifier.h" />
+    <ClInclude Include="Motion.h" />
+    <ClInclude Include="Performance.h" />
     <ClInclude Include="ScreenCapture.h" />
+    <ClInclude Include="Settings.h" />
+    <ClInclude Include="Speech.h" />
+    <ClInclude Include="Text.h" />
+    <ClInclude Include="TextBuffer.h" />
+    <ClInclude Include="TextRender.h" />
+    <ClInclude Include="Trainer.h" />
     <ClInclude Include="UI.h" />
     <ClInclude Include="Utils.h" />
+    <ClInclude Include="VideoSource.h" />
+    <ClInclude Include="WinUtil.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Gesture.cpp" />
+    <ClCompile Include="GestureEngine.cpp" />
+    <ClCompile Include="Gui.cpp" />
     <ClCompile Include="HandTracker.cpp" />
+    <ClCompile Include="Log.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MlpClassifier.cpp" />
+    <ClCompile Include="Motion.cpp" />
     <ClCompile Include="ScreenCapture.cpp" />
+    <ClCompile Include="Settings.cpp" />
+    <ClCompile Include="Speech.cpp" />
+    <ClCompile Include="TextBuffer.cpp" />
+    <ClCompile Include="TextRender.cpp" />
+    <ClCompile Include="Trainer.cpp" />
     <ClCompile Include="UI.cpp" />
     <ClCompile Include="Utils.cpp" />
+    <ClCompile Include="VideoSource.cpp" />
+    <ClCompile Include="WinUtil.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="OnnxRuntime.props" />

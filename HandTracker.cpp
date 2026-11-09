@@ -1,9 +1,26 @@
-#include "HandTracker.h"
+﻿#include "HandTracker.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
 
 namespace HandTracker {
+
+    // === БЫСТРОЕ ЗАПОЛНЕНИЕ ВХОДНОГО ТЕНЗОРА ===
+    // BGR uint8 (HxWx3) -> RGB float [0..1], раскладка CHW.
+    // Раньше это делалось тройным циклом с rgb.at<Vec3f>(y,x) на каждый пиксель - медленно.
+    // Теперь cv::split сам раскладывает каналы прямо в нужный буфер.
+    static void fillTensor(const cv::Mat& bgr, std::vector<float>& data, int size) {
+        cv::Mat rgb;
+        cv::cvtColor(bgr, rgb, cv::COLOR_BGR2RGB);
+        rgb.convertTo(rgb, CV_32FC3, 1.0 / 255.0);
+
+        cv::Mat planes[3] = {
+            cv::Mat(size, size, CV_32F, data.data()),
+            cv::Mat(size, size, CV_32F, data.data() + size * size),
+            cv::Mat(size, size, CV_32F, data.data() + 2 * size * size)
+        };
+        cv::split(rgb, planes);
+    }
 
     // === HAND TRACK ===
     cv::Point2f HandTrack::center() const {
@@ -12,14 +29,19 @@ namespace HandTracker {
         return c / 5.0f;
     }
 
-    void HandTrack::updatePoints(const std::array<cv::Point3f, 21>& newPts) {
-        for (int i = 0; i < 21; ++i) {
-            cv::Point2f meas(newPts[i].x, newPts[i].y);
-            cv::Point2f filtered = kalmans[i].update(meas);
-            points[i].x = filtered.x;
-            points[i].y = filtered.y;
-            points[i].z = newPts[i].z;
+    float HandTrack::size() const {
+        float m = 0.0f;
+        for (int i = 1; i < 21; ++i) {
+            cv::Point2f d(points[i].x - points[0].x, points[i].y - points[0].y);
+            m = std::max(m, (float)cv::norm(d));
         }
+        return m;
+    }
+
+    void HandTrack::updatePoints(const std::array<cv::Point3f, 21>& newPts, float dt) {
+        raw = newPts;
+        for (int i = 0; i < 21; ++i)
+            points[i] = filters[i].update(newPts[i], dt);
     }
 
     // === PALM DETECTOR ===
@@ -40,6 +62,8 @@ namespace HandTracker {
             std::cout << "Palm: input=\"" << inputName << "\"\n";
             anchors = generateAnchors();
             std::cout << "Anchors: " << anchors.size() << "\n";
+
+            inputData.resize(3 * PALM_INPUT_SIZE * PALM_INPUT_SIZE);
             return true;
         }
         catch (const Ort::Exception& e) {
@@ -64,16 +88,7 @@ namespace HandTracker {
             cv::Size(PALM_INPUT_SIZE, PALM_INPUT_SIZE),
             cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
 
-        cv::Mat rgb;
-        cv::cvtColor(canvas, rgb, cv::COLOR_BGR2RGB);
-        rgb.convertTo(rgb, CV_32FC3, 1.0 / 255.0);
-
-        std::vector<float> inputData(1 * 3 * PALM_INPUT_SIZE * PALM_INPUT_SIZE);
-        for (int c = 0; c < 3; ++c)
-            for (int y = 0; y < PALM_INPUT_SIZE; ++y)
-                for (int x = 0; x < PALM_INPUT_SIZE; ++x)
-                    inputData[c * PALM_INPUT_SIZE * PALM_INPUT_SIZE + y * PALM_INPUT_SIZE + x]
-                    = rgb.at<cv::Vec3f>(y, x)[c];
+        fillTensor(canvas, inputData, PALM_INPUT_SIZE);
 
         std::array<int64_t, 4> inputShape = { 1, 3, PALM_INPUT_SIZE, PALM_INPUT_SIZE };
         Ort::MemoryInfo mi = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
@@ -176,6 +191,53 @@ namespace HandTracker {
         return result;
     }
 
+    // === ROI ПО ЛАДОНИ (как было раньше) ===
+    Roi roiFromPalm(const PalmDetector::Detection& palm) {
+        cv::Point2f dir = palm.mcp - palm.wrist;
+        float norm = (float)cv::norm(dir);
+        if (norm < 1e-6f) norm = 1.0f;
+        cv::Point2f unit = dir / norm;
+
+        Roi r;
+        r.cx = palm.cx + ROI_SHIFT * palm.width * unit.x;
+        r.cy = palm.cy + ROI_SHIFT * palm.width * unit.y;
+        r.angleDeg = std::atan2(unit.y, unit.x) * 180.0f / (float)CV_PI + 90.0f;
+        r.side = ROI_SCALE * palm.width;
+        return r;
+    }
+
+    // === ROI ПО КЛЮЧЕВЫМ ТОЧКАМ ПРОШЛОГО КАДРА ===
+    // Главная идея: детектор ладони нужен только чтобы НАЙТИ руку.
+    // Дальше руку ведём по её же точкам: рамку строим вокруг точек прошлого кадра.
+    // Поэтому кулак (который детектор ладони находит плохо) не теряется.
+    Roi roiFromLandmarks(const std::array<cv::Point3f, 21>& pts) {
+        cv::Point2f wrist(pts[0].x, pts[0].y);
+        cv::Point2f dir = cv::Point2f(pts[9].x, pts[9].y) - wrist;   // запястье -> основание среднего пальца
+        float angle = std::atan2(dir.y, dir.x) + (float)CV_PI / 2.0f; // тот же угол, что и в roiFromPalm
+        float c = std::cos(angle), s = std::sin(angle);
+
+        // Поворачиваем точки так, чтобы рука "стояла" пальцами вверх, и берём рамку вокруг них
+        float minX = 1e9f, maxX = -1e9f, minY = 1e9f, maxY = -1e9f;
+        for (const auto& p : pts) {
+            float dx = p.x - wrist.x, dy = p.y - wrist.y;
+            float qx = c * dx + s * dy;
+            float qy = -s * dx + c * dy;
+            minX = std::min(minX, qx); maxX = std::max(maxX, qx);
+            minY = std::min(minY, qy); maxY = std::max(maxY, qy);
+        }
+        float w = maxX - minX, h = maxY - minY;
+        float qcx = (minX + maxX) / 2.0f;
+        float qcy = (minY + maxY) / 2.0f + ROI_LM_SHIFT_Y * h;   // чуть вверх, к пальцам
+
+        // Центр рамки возвращаем в координаты кадра (обратный поворот)
+        Roi r;
+        r.cx = wrist.x + c * qcx - s * qcy;
+        r.cy = wrist.y + s * qcx + c * qcy;
+        r.angleDeg = angle * 180.0f / (float)CV_PI;
+        r.side = ROI_LM_SCALE * std::max(w, h);
+        return r;
+    }
+
     // === HAND LANDMARKER ===
     bool HandLandmarker::init(const std::string& modelPath) {
         try {
@@ -194,6 +256,8 @@ namespace HandTracker {
             outWorld = session->GetOutputNameAllocated(3, allocator).get();
 
             std::cout << "Landmark: input=\"" << inputName << "\"\n";
+
+            inputData.resize(3 * HAND_INPUT_SIZE * HAND_INPUT_SIZE);
             return true;
         }
         catch (const Ort::Exception& e) {
@@ -202,26 +266,15 @@ namespace HandTracker {
         }
     }
 
-    HandLandmarker::Result HandLandmarker::predict(const cv::Mat& frame,
-        const PalmDetector::Detection& palm) {
+    HandLandmarker::Result HandLandmarker::predict(const cv::Mat& frame, const Roi& roi,
+        float presenceThreshold) {
         Result res;
-        if (frame.empty()) return res;
+        if (frame.empty() || roi.side < 20.0f) return res;
 
-        cv::Point2f dir = palm.mcp - palm.wrist;
-        float norm = cv::norm(dir);
-        if (norm < 1e-6f) norm = 1.0f;
-        cv::Point2f unit = dir / norm;
-
-        float center_x = palm.cx + ROI_SHIFT * palm.width * unit.x;
-        float center_y = palm.cy + ROI_SHIFT * palm.width * unit.y;
-        float angleDeg = std::atan2(unit.y, unit.x) * 180.0f / CV_PI + 90.0f;
-        float side = ROI_SCALE * palm.width;
-        if (side < 20.0f) return res;
-
-        cv::Mat matrix = cv::getRotationMatrix2D({ center_x, center_y },
-            angleDeg, (double)HAND_INPUT_SIZE / side);
-        matrix.at<double>(0, 2) += HAND_INPUT_SIZE / 2.0 - center_x;
-        matrix.at<double>(1, 2) += HAND_INPUT_SIZE / 2.0 - center_y;
+        cv::Mat matrix = cv::getRotationMatrix2D({ roi.cx, roi.cy },
+            roi.angleDeg, (double)HAND_INPUT_SIZE / roi.side);
+        matrix.at<double>(0, 2) += HAND_INPUT_SIZE / 2.0 - roi.cx;
+        matrix.at<double>(1, 2) += HAND_INPUT_SIZE / 2.0 - roi.cy;
 
         cv::Mat crop;
         cv::warpAffine(frame, crop, matrix,
@@ -230,16 +283,7 @@ namespace HandTracker {
         cv::Mat inverse;
         cv::invertAffineTransform(matrix, inverse);
 
-        cv::Mat rgb;
-        cv::cvtColor(crop, rgb, cv::COLOR_BGR2RGB);
-        rgb.convertTo(rgb, CV_32FC3, 1.0 / 255.0);
-
-        std::vector<float> inputData(1 * 3 * HAND_INPUT_SIZE * HAND_INPUT_SIZE);
-        for (int c = 0; c < 3; ++c)
-            for (int y = 0; y < HAND_INPUT_SIZE; ++y)
-                for (int x = 0; x < HAND_INPUT_SIZE; ++x)
-                    inputData[c * HAND_INPUT_SIZE * HAND_INPUT_SIZE + y * HAND_INPUT_SIZE + x]
-                    = rgb.at<cv::Vec3f>(y, x)[c];
+        fillTensor(crop, inputData, HAND_INPUT_SIZE);
 
         std::array<int64_t, 4> inputShape = { 1, 3, HAND_INPUT_SIZE, HAND_INPUT_SIZE };
         Ort::MemoryInfo mi = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
@@ -257,10 +301,11 @@ namespace HandTracker {
         float* handedness = outputs[2].GetTensorMutableData<float>();
 
         res.presence = presence[0];
+        res.handednessProb = handedness[0];
         res.handedness = handedness[0] > 0.5f ? 1 : 0;
-        if (res.presence < PRESENCE_THRESHOLD) return res;
+        if (res.presence < presenceThreshold) return res;
 
-        float z_scale = side / (float)HAND_INPUT_SIZE;
+        float z_scale = roi.side / (float)HAND_INPUT_SIZE;
         for (int i = 0; i < 21; ++i) {
             float x = screen[i * 3 + 0], y = screen[i * 3 + 1], z = screen[i * 3 + 2];
             float xImg = (float)(inverse.at<double>(0, 0) * x + inverse.at<double>(0, 1) * y + inverse.at<double>(0, 2));

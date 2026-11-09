@@ -1,5 +1,6 @@
-#include "Utils.h"
+﻿#include "Utils.h"
 #include <algorithm>
+#include <cmath>
 
 namespace HandTracker {
 
@@ -42,33 +43,41 @@ namespace HandTracker {
         return inter / uni;
     }
 
-    // === KALMAN ===
-    PointKalman::PointKalman() {
-        kf.init(4, 2, 0, CV_32F);
-        kf.transitionMatrix = (cv::Mat_<float>(4, 4) <<
-            1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1);
-        cv::setIdentity(kf.measurementMatrix);
-        cv::setIdentity(kf.processNoiseCov, cv::Scalar::all(KF_PROCESS_NOISE));
-        cv::setIdentity(kf.measurementNoiseCov, cv::Scalar::all(KF_MEASUREMENT_NOISE));
-        cv::setIdentity(kf.errorCovPost, cv::Scalar::all(1.0f));
+    // === ONE EURO FILTER ===
+    // alpha = коэффициент low-pass фильтра для заданной частоты среза
+    static float lowPassAlpha(float cutoff, float dt) {
+        float tau = 1.0f / (2.0f * (float)CV_PI * cutoff);
+        return 1.0f / (1.0f + tau / dt);
     }
 
-    cv::Point2f PointKalman::update(cv::Point2f m) {
+    float OneEuroFilter::filter(float x, float dt) {
         if (!initialized) {
-            kf.statePost.at<float>(0) = m.x;
-            kf.statePost.at<float>(1) = m.y;
-            kf.statePost.at<float>(2) = 0;
-            kf.statePost.at<float>(3) = 0;
+            xPrev = x;
+            dxPrev = 0.0f;
             initialized = true;
-            return m;
+            return x;
         }
-        kf.predict();
-        cv::Mat meas = (cv::Mat_<float>(2, 1) << m.x, m.y);
-        cv::Mat corrected = kf.correct(meas);
-        return cv::Point2f(corrected.at<float>(0), corrected.at<float>(1));
+
+        // 1. скорость изменения (тоже слегка сглаживаем)
+        float dx = (x - xPrev) / dt;
+        float aD = lowPassAlpha(OE_D_CUTOFF, dt);
+        dxPrev = aD * dx + (1.0f - aD) * dxPrev;
+
+        // 2. чем быстрее движение, тем выше частота среза -> меньше сглаживание
+        float cutoff = OE_MIN_CUTOFF + OE_BETA * std::abs(dxPrev);
+        float a = lowPassAlpha(cutoff, dt);
+
+        xPrev = a * x + (1.0f - a) * xPrev;
+        return xPrev;
     }
 
-    void PointKalman::reset() { initialized = false; }
+    cv::Point3f PointFilter::update(const cv::Point3f& p, float dt) {
+        return cv::Point3f(fx.filter(p.x, dt), fy.filter(p.y, dt), fz.filter(p.z, dt));
+    }
+
+    void PointFilter::reset() {
+        fx.reset(); fy.reset(); fz.reset();
+    }
 
     // === СКЕЛЕТ ===
     const std::vector<std::pair<int, int>> CONNECTIONS = {
