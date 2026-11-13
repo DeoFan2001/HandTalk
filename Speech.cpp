@@ -43,10 +43,10 @@ namespace HandTracker {
         return true;
     }
 
-    void Speech::speak(const std::wstring& text) {
-        if (!voice_ || text.empty()) return;
+    bool Speech::speak(const std::wstring& text) {
+        if (!voice_ || text.empty()) return false;
         if (paused_) { voice_->Resume(); paused_ = false; }
-        voice_->Speak(text.c_str(), SPF_ASYNC | SPF_PURGEBEFORESPEAK, nullptr);
+        return SUCCEEDED(voice_->Speak(text.c_str(), SPF_ASYNC | SPF_PURGEBEFORESPEAK, nullptr));
     }
 
     void Speech::pauseResume() {
@@ -59,13 +59,6 @@ namespace HandTracker {
         if (!voice_) return;
         if (paused_) { voice_->Resume(); paused_ = false; }
         voice_->Speak(L"", SPF_ASYNC | SPF_PURGEBEFORESPEAK, nullptr);
-    }
-
-    bool Speech::busy() const {
-        if (!voice_) return false;
-        SPVOICESTATUS st{};
-        if (FAILED(voice_->GetStatus(&st, nullptr))) return false;
-        return st.dwRunningState == SPRS_IS_SPEAKING;
     }
 
 } // namespace HandTracker

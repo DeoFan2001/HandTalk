@@ -1,11 +1,26 @@
 ﻿#include "VideoSource.h"
 #include "ScreenCapture.h"
+#include <objbase.h>
 
 namespace HandTracker {
 
+    // Озвучивание (SAPI) работает через COM на потоке программы. Закрывая камеру через DirectShow,
+    // OpenCV может лишний раз вызвать CoUninitialize на этом же потоке, и после этого озвучивание молчит.
+    // Поэтому перед каждой работой с камерой добавляем ссылку на COM заранее: лишняя ссылка ничему не мешает.
+    static void keepComAlive() {
+        CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    }
+
     // === КАМЕРА ===
-    bool CameraSource::open() {
+    CameraSource::~CameraSource() {
+        keepComAlive();
         cap_.release();
+    }
+
+    bool CameraSource::open() {
+        keepComAlive();
+        cap_.release();
+        keepComAlive();
         // DirectShow на Windows открывает камеру быстрее и стабильнее, чем MSMF
         if (!cap_.open(index_, cv::CAP_DSHOW)) cap_.open(index_);
         if (!cap_.isOpened()) return false;
@@ -22,6 +37,17 @@ namespace HandTracker {
         out = f;                                      // без зеркала: все источники дают одинаковую картинку,
                                                       // поэтому образцы жестов подходят к любому источнику
         return true;
+    }
+
+    std::vector<int> findCameras(int maxCount) {
+        std::vector<int> found;
+        for (int i = 0; i < maxCount; ++i) {
+            keepComAlive();
+            cv::VideoCapture c;
+            if (c.open(i, cv::CAP_DSHOW) && c.isOpened()) found.push_back(i);
+            c.release();
+        }
+        return found;
     }
 
     // === ФАЙЛ ===

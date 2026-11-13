@@ -149,11 +149,11 @@
     <ClInclude Include="Gesture.h" />
     <ClInclude Include="GestureEngine.h" />
     <ClInclude Include="Gui.h" />
+    <ClInclude Include="HandArt.h" />
     <ClInclude Include="HandTracker.h" />
     <ClInclude Include="Log.h" />
     <ClInclude Include="MlpClassifier.h" />
     <ClInclude Include="Motion.h" />
-    <ClInclude Include="Performance.h" />
     <ClInclude Include="ScreenCapture.h" />
     <ClInclude Include="Settings.h" />
     <ClInclude Include="Speech.h" />
@@ -170,6 +170,7 @@
     <ClCompile Include="Gesture.cpp" />
     <ClCompile Include="GestureEngine.cpp" />
     <ClCompile Include="Gui.cpp" />
+    <ClCompile Include="HandArt.cpp" />
     <ClCompile Include="HandTracker.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="main.cpp" />

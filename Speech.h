@@ -17,10 +17,9 @@ namespace HandTracker {
         bool init(int rate = 0, int volume = 100);   // false - озвучивание недоступно
         bool available() const { return voice_ != nullptr; }
         bool hasRussianVoice() const { return russian_; }
-        void speak(const std::wstring& text);        // прерывает предыдущую фразу, не блокирует программу
+        bool speak(const std::wstring& text);        // прерывает предыдущую фразу, не блокирует программу; false - не удалось
         void pauseResume();                          // пауза / продолжение
         void stop();
-        bool busy() const;
         bool paused() const { return paused_; }
     };
 

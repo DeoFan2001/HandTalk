@@ -33,8 +33,6 @@ namespace HandTracker {
         void backspace();
         void clear();
         const std::wstring& text() const { return text_; }
-        // Последнее слово: его озвучиваем по нажатию клавиши
-        std::wstring lastWord() const;
         // Прогресс подтверждения кандидата 0..1 (для индикатора на экране)
         float progress() const;
         const std::string& candidate() const { return cand_; }

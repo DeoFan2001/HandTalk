@@ -55,6 +55,22 @@ namespace HandTracker {
         if (h) ShowWindow(h, SW_RESTORE);
     }
 
+    void applyDarkTitleBar(const std::string& title) {
+        HWND h = FindWindowA(nullptr, title.c_str());
+        if (!h) return;
+        // dwmapi.dll подключаем на ходу: в настройки сборки ничего добавлять не нужно
+        HMODULE dwm = LoadLibraryW(L"dwmapi.dll");
+        if (!dwm) return;
+        typedef HRESULT(WINAPI* SetAttr)(HWND, DWORD, LPCVOID, DWORD);
+        SetAttr setAttr = (SetAttr)GetProcAddress(dwm, "DwmSetWindowAttribute");
+        if (setAttr) {
+            const BOOL on = TRUE;
+            const DWORD DARK = 20;                                  // DWMWA_USE_IMMERSIVE_DARK_MODE
+            if (FAILED(setAttr(h, DARK, &on, sizeof(on)))) setAttr(h, 19, &on, sizeof(on));   // 19 - в ранних сборках Windows 10
+        }
+        FreeLibrary(dwm);
+    }
+
     bool excludeFromCapture(const std::string& title, bool exclude) {
         HWND h = FindWindowA(nullptr, title.c_str());
         if (!h) return false;

@@ -41,7 +41,6 @@ namespace HandTracker {
 
     public:
         struct Detection {
-            float score;
             float cx, cy, width;
             cv::Point2f wrist;
             cv::Point2f mcp;
@@ -71,7 +70,7 @@ namespace HandTracker {
         Ort::AllocatorWithDefaultOptions allocator;
 
         std::string inputName;
-        std::string outScreen, outPresence, outHandedness, outWorld;
+        std::string outScreen, outPresence, outHandedness;
         std::vector<float> inputData;
 
     public:

@@ -75,23 +75,4 @@ namespace HandTracker {
         return reg;
     }
 
-    bool setupOverlayWindow(const std::string& winName, int x, int y, int w, int h, int alpha) {
-        HWND hwnd = FindWindowA(nullptr, winName.c_str());
-        if (!hwnd) return false;
-
-        LONG style = GetWindowLong(hwnd, GWL_STYLE);
-        style &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);
-        style |= WS_POPUP;
-        SetWindowLong(hwnd, GWL_STYLE, style);
-
-        LONG ex = GetWindowLong(hwnd, GWL_EXSTYLE);
-        ex |= WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TRANSPARENT;
-        SetWindowLong(hwnd, GWL_EXSTYLE, ex);
-
-        SetWindowPos(hwnd, HWND_TOPMOST, x, y, w, h, SWP_SHOWWINDOW | SWP_FRAMECHANGED);
-        SetLayeredWindowAttributes(hwnd, 0, (BYTE)alpha, LWA_ALPHA);
-        SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
-        return true;
-    }
-
 } // namespace HandTracker

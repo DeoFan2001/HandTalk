@@ -13,6 +13,6 @@ namespace HandTracker {
 
     GestureResult MlpClassifier::classify(const Features&) const {
         return GestureResult{};   // заглушка: "не знаю"
-    }
+    }  
 
 } // namespace HandTracker

@@ -58,7 +58,5 @@ namespace HandTracker {
     void logError(const std::string& msg) { write("ERROR", msg); }
 
     void logInfo(const std::wstring& msg) { write("INFO", toUtf8(msg)); }
-    void logWarn(const std::wstring& msg) { write("WARN", toUtf8(msg)); }
-    void logError(const std::wstring& msg) { write("ERROR", toUtf8(msg)); }
 
 } // namespace HandTracker

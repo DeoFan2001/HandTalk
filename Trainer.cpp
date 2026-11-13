@@ -73,7 +73,6 @@ namespace HandTracker {
             out += L"  проверить точность нельзя: слишком мало образцов\n";
             return;
         }
-        st.tested = e.total;
         st.accuracy = (float)e.ok / (float)e.total;
         out += L"  точность на проверочной части: " + num("%.1f", st.accuracy * 100) + L"% (" + num(e.ok) + L" из " + num(e.total) + L")\n";
         if (e.rejected) out += L"  не распознано (ниже порогов): " + num(e.rejected) + L"\n";

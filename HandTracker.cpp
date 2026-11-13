@@ -176,7 +176,6 @@ namespace HandTracker {
 
         for (auto& c : kept) {
             Detection d;
-            d.score = c.score;
             d.cx = (c.cx * PALM_INPUT_SIZE - padX) / scale;
             d.cy = (c.cy * PALM_INPUT_SIZE - padY) / scale;
             d.width = std::max(c.w, c.h) * PALM_INPUT_SIZE / scale;
@@ -253,7 +252,6 @@ namespace HandTracker {
             outScreen = session->GetOutputNameAllocated(0, allocator).get();
             outPresence = session->GetOutputNameAllocated(1, allocator).get();
             outHandedness = session->GetOutputNameAllocated(2, allocator).get();
-            outWorld = session->GetOutputNameAllocated(3, allocator).get();
 
             std::cout << "Landmark: input=\"" << inputName << "\"\n";
 
@@ -292,9 +290,8 @@ namespace HandTracker {
             inputShape.data(), inputShape.size());
 
         const char* in[] = { inputName.c_str() };
-        const char* out[] = { outScreen.c_str(), outPresence.c_str(),
-                              outHandedness.c_str(), outWorld.c_str() };
-        auto outputs = session->Run(Ort::RunOptions{ nullptr }, in, &inputTensor, 1, out, 4);
+        const char* out[] = { outScreen.c_str(), outPresence.c_str(), outHandedness.c_str() };
+        auto outputs = session->Run(Ort::RunOptions{ nullptr }, in, &inputTensor, 1, out, 3);
 
         float* screen = outputs[0].GetTensorMutableData<float>();
         float* presence = outputs[1].GetTensorMutableData<float>();

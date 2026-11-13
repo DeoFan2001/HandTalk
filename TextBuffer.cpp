@@ -49,14 +49,6 @@ namespace HandTracker {
         text_.clear(); cand_.clear(); candFrames_ = 0; lockedCode_.clear(); emptyFrames_ = 0;
     }
 
-    std::wstring TextBuffer::lastWord() const {
-        std::size_t end = text_.size();
-        while (end > 0 && text_[end - 1] == L' ') --end;
-        std::size_t beg = text_.rfind(L' ', end ? end - 1 : 0);
-        beg = (beg == std::wstring::npos || end == 0) ? 0 : beg + 1;
-        return text_.substr(beg, end - beg);
-    }
-
     float TextBuffer::progress() const {
         if (cand_.empty()) return 0;
         if (cand_ == lockedCode_) return 1;

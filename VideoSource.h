@@ -4,6 +4,7 @@
 #include <memory>
 #include <opencv2/opencv.hpp>
 #include <string>
+#include <vector>
 
 namespace HandTracker {
 
@@ -15,7 +16,6 @@ namespace HandTracker {
         virtual bool open() = 0;                  // false - источник недоступен
         virtual bool read(cv::Mat& out) = 0;      // false - кадра нет (сигнал потерян / файл кончился)
         virtual std::string name() const = 0;     // название для экрана и журнала
-        virtual bool isScreen() const { return false; }
     };
 
     // === КАМЕРА ===
@@ -24,10 +24,15 @@ namespace HandTracker {
         cv::VideoCapture cap_;
     public:
         explicit CameraSource(int index) : index_(index) {}
+        ~CameraSource() override;
         bool open() override;
         bool read(cv::Mat& out) override;
         std::string name() const override { return "Камера " + std::to_string(index_); }
     };
+
+    // Номера камер, которые удалось открыть (проверяются номера 0..maxCount-1).
+    // Занятая другой программой камера в список не попадёт.
+    std::vector<int> findCameras(int maxCount = 6);
 
     // === ВИДЕОФАЙЛ (по окончании начинается сначала) ===
     class FileSource : public IFrameSource {
@@ -50,11 +55,6 @@ namespace HandTracker {
         bool open() override;
         bool read(cv::Mat& out) override;
         std::string name() const override { return "Экран"; }
-        bool isScreen() const override { return true; }
-        int x() const { return x_; }
-        int y() const { return y_; }
-        int w() const { return w_; }
-        int h() const { return h_; }
     };
 
 } // namespace HandTracker

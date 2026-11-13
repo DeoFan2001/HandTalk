@@ -24,17 +24,14 @@ namespace HandTracker {
 
     // Что произошло на кадре (для экрана и записи образцов)
     struct FrameOut {
-        bool hand = false;                 // рука в кадре
         bool moving = false;               // рука сейчас движется
         std::string code;                  // поза: код буквы или "" (нет уверенного ответа)
-        float conf = 0;
         bool hasFeatures = false;          // рука стоит - признаки позы готовы (для записи образцов)
         Features feat;
         bool hasSeq = false;               // движение только что закончилось - признаки готовы
         SeqFeatures seq;
         std::string dynCode;               // буква, найденная по движению, или ""
         float dynConf = 0;
-        wchar_t added = 0;                 // в текст добавлен этот символ (буква или пробел)
     };
 
     class GestureEngine {
@@ -53,7 +50,6 @@ namespace HandTracker {
 
         void setStatic(const IClassifier* c) { stat_ = c; }
         void setDynamic(const SeqKnn* d) { dyn_ = d; }
-        void setParams(const EngineParams& p) { p_ = p; seg_.setParams(p.motion); }
         TextBuffer& text() { return text_; }
         const TextBuffer& text() const { return text_; }
 

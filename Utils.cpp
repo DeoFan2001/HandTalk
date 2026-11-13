@@ -29,20 +29,6 @@ namespace HandTracker {
         return anchors;
     }
 
-    // === IoU ===
-    float rectIoU(const cv::Rect2f& a, const cv::Rect2f& b) {
-        float x1 = std::max(a.x, b.x);
-        float y1 = std::max(a.y, b.y);
-        float x2 = std::min(a.x + a.width, b.x + b.width);
-        float y2 = std::min(a.y + a.height, b.y + b.height);
-        float iw = std::max(0.0f, x2 - x1);
-        float ih = std::max(0.0f, y2 - y1);
-        float inter = iw * ih;
-        float uni = a.width * a.height + b.width * b.height - inter;
-        if (uni < 1e-6f) return 0.0f;
-        return inter / uni;
-    }
-
     // === ONE EURO FILTER ===
     // alpha = коэффициент low-pass фильтра для заданной частоты среза
     static float lowPassAlpha(float cutoff, float dt) {
@@ -73,10 +59,6 @@ namespace HandTracker {
 
     cv::Point3f PointFilter::update(const cv::Point3f& p, float dt) {
         return cv::Point3f(fx.filter(p.x, dt), fy.filter(p.y, dt), fz.filter(p.z, dt));
-    }
-
-    void PointFilter::reset() {
-        fx.reset(); fy.reset(); fz.reset();
     }
 
     // === СКЕЛЕТ ===

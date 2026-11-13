@@ -27,9 +27,6 @@ namespace HandTracker {
     // === ANCHORS ===
     std::vector<cv::Point2f> generateAnchors();
 
-    // === MATH ===
-    float rectIoU(const cv::Rect2f& a, const cv::Rect2f& b);
-
     // === СГЛАЖИВАНИЕ (One Euro Filter) ===
     // Идея: простой low-pass фильтр x = a*новое + (1-a)*старое,
     // но коэффициент a зависит от скорости:
@@ -40,7 +37,6 @@ namespace HandTracker {
         float xPrev = 0.0f, dxPrev = 0.0f;
     public:
         float filter(float x, float dt);
-        void reset() { initialized = false; }
     };
 
     // Фильтр для одной точки (x, y, z)
@@ -48,7 +44,6 @@ namespace HandTracker {
         OneEuroFilter fx, fy, fz;
     public:
         cv::Point3f update(const cv::Point3f& p, float dt);
-        void reset();
     };
 
     // === СКЕЛЕТ ===

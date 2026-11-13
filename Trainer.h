@@ -27,7 +27,6 @@ namespace HandTracker {
     struct PartStats {
         int samples = 0;           // образцов
         int letters = 0;           // букв
-        int tested = 0;            // проверено образцов
         float accuracy = -1;       // точность 0..1 (-1 - проверить нельзя)
     };
 

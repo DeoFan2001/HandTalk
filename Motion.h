@@ -56,7 +56,6 @@ namespace HandTracker {
         bool finish(SeqFeatures& out, int trailing);
     public:
         explicit MotionSegmenter(MotionParams p = MotionParams()) : p_(p) {}
-        void setParams(const MotionParams& p) { p_ = p; }
         // Подавать на каждом кадре (pts == nullptr, если руки нет).
         // Возвращает true, когда движение только что закончилось; признаки - в out.
         bool update(const HandPoints* pts, bool isLeft, SeqFeatures& out);

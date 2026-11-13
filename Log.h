@@ -13,9 +13,7 @@ namespace HandTracker {
     void logWarn(const std::string& msg);
     void logError(const std::string& msg);
 
-    // Те же функции для широких строк (сообщения для пользователя на русском)
+    // Для широких строк (сообщения на русском) нужен только logInfo
     void logInfo(const std::wstring& msg);
-    void logWarn(const std::wstring& msg);
-    void logError(const std::wstring& msg);
 
 } // namespace HandTracker

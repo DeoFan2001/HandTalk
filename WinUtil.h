@@ -13,6 +13,10 @@ namespace HandTracker {
     void minimizeWindow(const std::string& title);
     void restoreWindow(const std::string& title);
 
+    // Тёмная рамка и заголовок окна (Windows 10 версии 20H1 и новее; на старых системах ничего не меняется).
+    // Нужна, чтобы заголовок не выбивался из тёмного оформления программы.
+    void applyDarkTitleBar(const std::string& title);
+
     // Не попадать в захват экрана (Windows 10 версии 2004 и новее). Нужно в режиме "Область экрана",
     // чтобы окно программы само не оказалось в кадре. Возвращает false, если система не поддерживает.
     bool excludeFromCapture(const std::string& title, bool exclude);
