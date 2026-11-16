@@ -56,6 +56,11 @@ namespace HandTracker {
             else if (k == "speakEnabled") { ok = toInt(v, i); if (ok) speakEnabled = (i != 0); }
             else if (k == "speechRate") ok = toInt(v, speechRate);
             else if (k == "speechVolume") ok = toInt(v, speechVolume);
+            else if (k == "voiceName") voiceName = v;
+            else if (k == "ttsModelsDir") ttsModelsDir = v;
+            else if (k == "fixWords") { ok = toInt(v, i); if (ok) fixWords = (i != 0); }
+            else if (k == "dictFile") dictFile = v;
+            else if (k == "bigramsFile") bigramsFile = v;
             else if (k == "samplesFile") samplesFile = v;
             else if (k == "dynSamplesFile") dynSamplesFile = v;
             else if (k == "mlpModel") mlpModel = v;
@@ -242,6 +247,10 @@ namespace HandTracker {
         comment(L"Озвучивание: 1 - включено, 0 - выключено");               line("speakEnabled", speakEnabled ? "1" : "0");
         comment(L"Скорость речи (-10..10)");                                line("speechRate", num(speechRate));
         comment(L"Громкость речи (0..100)");                                line("speechVolume", num(speechVolume));
+        comment(L"Голос озвучивания: Irina, Dmitri или имя папки модели");  line("voiceName", voiceName);
+        comment(L"Папка с моделями голосов");                               line("ttsModelsDir", ttsModelsDir);
+        comment(L"Исправлять слова перед озвучиванием: 1 - да, 0 - нет");   line("fixWords", fixWords ? "1" : "0");
+        comment(L"Словарь и пары слов для исправления слов");               line("dictFile", dictFile); line("bigramsFile", bigramsFile);
         os << "\n";
         comment(L"--- Для разработчиков ---");
         comment(L"Порог уверенности для позы (0..1)");                      line("minConfidence", num(minConfidence));

@@ -31,8 +31,13 @@ namespace HandTracker {
         float minConfidence = 0.6f;     // ниже - буква не вводится
         double targetFps = 20.0;
         bool speakEnabled = true;
-        int speechRate = 0;             // -10..10 (SAPI)
+        int speechRate = 0;             // -10..10
         int speechVolume = 100;         // 0..100
+        std::string voiceName = "Irina";            // голос Piper: "Irina", "Dmitri" или имя папки модели
+        std::string ttsModelsDir = "Models/tts";    // папка с моделями голосов
+        bool fixWords = true;                       // исправлять слова перед озвучиванием
+        std::string dictFile = "dict_ru.txt";       // словарь для исправления слов
+        std::string bigramsFile = "bigrams_ru.txt"; // пары слов для исправления слов
         std::string samplesFile = "gestures.csv";              // образцы поз
         std::string dynSamplesFile = "gestures_dynamic.csv";   // образцы движений
         std::string mlpModel = "models/gesture_mlp.onnx";

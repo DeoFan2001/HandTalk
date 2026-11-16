@@ -74,6 +74,14 @@
     <Import Project="OpenCV.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>third_party/miniaudio;third_party/sherpa-onnx/include;$(IncludePath)</IncludePath>
+    <LibraryPath>third_party/sherpa-onnx/lib;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>third_party/miniaudio;third_party/sherpa-onnx/include;$(IncludePath)</IncludePath>
+    <LibraryPath>third_party/sherpa-onnx/lib;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -124,6 +132,11 @@
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
     </Manifest>
+    <PostBuildEvent>
+      <Command>xcopy /y "$(ProjectDir)third_party\sherpa-onnx\lib\onnxruntime.dll" "$(OutDir)"
+xcopy /y "$(ProjectDir)third_party\sherpa-onnx\lib\onnxruntime_providers_shared.dll" "$(OutDir)"
+xcopy /y "$(ProjectDir)third_party\sherpa-onnx\lib\sherpa-onnx-c-api.dll" "$(OutDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -143,6 +156,11 @@
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
     </Manifest>
+    <PostBuildEvent>
+      <Command>xcopy /y "$(ProjectDir)third_party\sherpa-onnx\lib\onnxruntime.dll" "$(OutDir)"
+xcopy /y "$(ProjectDir)third_party\sherpa-onnx\lib\onnxruntime_providers_shared.dll" "$(OutDir)"
+xcopy /y "$(ProjectDir)third_party\sherpa-onnx\lib\sherpa-onnx-c-api.dll" "$(OutDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Alphabet.h" />
@@ -152,10 +170,14 @@
     <ClInclude Include="HandArt.h" />
     <ClInclude Include="HandTracker.h" />
     <ClInclude Include="Log.h" />
+    <ClInclude Include="miniaudio.h" />
     <ClInclude Include="MlpClassifier.h" />
     <ClInclude Include="Motion.h" />
     <ClInclude Include="ScreenCapture.h" />
+    <ClInclude Include="SentenceGrammarEngine.h" />
     <ClInclude Include="Settings.h" />
+    <ClInclude Include="sherpa-onnx\c-api\c-api.h" />
+    <ClInclude Include="SmartVoice.h" />
     <ClInclude Include="Speech.h" />
     <ClInclude Include="Text.h" />
     <ClInclude Include="TextBuffer.h" />
@@ -177,7 +199,9 @@
     <ClCompile Include="MlpClassifier.cpp" />
     <ClCompile Include="Motion.cpp" />
     <ClCompile Include="ScreenCapture.cpp" />
+    <ClCompile Include="SentenceGrammarEngine.cpp" />
     <ClCompile Include="Settings.cpp" />
+    <ClCompile Include="SmartVoice.cpp" />
     <ClCompile Include="Speech.cpp" />
     <ClCompile Include="TextBuffer.cpp" />
     <ClCompile Include="TextRender.cpp" />

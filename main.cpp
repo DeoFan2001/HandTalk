@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <chrono>
 #include <fstream>
+#include <future>
 #include <map>
 #include <memory>
 #include <vector>
@@ -23,8 +24,9 @@
 #include "Log.h"
 #include "MlpClassifier.h"
 #include "Motion.h"
+#include "SentenceGrammarEngine.h"
 #include "Settings.h"
-#include "Speech.h"
+#include "SmartVoice.h"
 #include "Text.h"
 #include "Trainer.h"
 #include "UI.h"
@@ -211,14 +213,37 @@ int main() {
     learnEng.setStatic(clf);
     learnEng.setDynamic(&dynKnn);
 
-    // === ОЗВУЧИВАНИЕ ===
-    Speech speech;
+    // === ОЗВУЧИВАНИЕ (SmartVoice: Piper + sherpa-onnx, офлайн) ===
+    // Модель голоса грузится в фоне, окно открывается сразу
+    SmartVoice voice;
     std::wstring speechNote;
     if (st.speakEnabled) {
-        if (!speech.init(st.speechRate, st.speechVolume)) { speechNote = L"Озвучивание недоступно"; logWarn("SAPI недоступен"); }
-        else if (!speech.hasRussianVoice()) { speechNote = L"Нет русского голоса: озвучивание выключено"; logWarn("Русский голос не найден"); }
+        if (!voice.initAsync(fromUtf8(st.voiceName), st.speechRate, st.speechVolume, st.ttsModelsDir)) {
+            speechNote = L"Озвучивание недоступно: нет модели голоса в папке " + fromUtf8(st.ttsModelsDir);
+            logWarn("SmartVoice: голос не найден в " + st.ttsModelsDir);
+        }
     }
-    bool canSpeak = st.speakEnabled && speech.available() && speech.hasRussianVoice();
+    bool canSpeak = st.speakEnabled && voice.isAvailable();
+
+    // === ИСПРАВЛЕНИЕ СЛОВ (SentenceGrammarEngine) ===
+    // Словарь большой (около 8 МБ), поэтому тоже читаем в фоне
+    SentenceGrammarEngine fixer;
+    std::future<bool> fixerLoad;
+    if (st.fixWords) {
+        fixerLoad = std::async(std::launch::async, [&fixer, &st]() {
+            if (!fixer.loadDictionary(st.dictFile)) return false;
+            fixer.loadBigrams(st.bigramsFile);
+            return true;
+            });
+    }
+    bool fixerReady = false;     // словарь загружен и годится для работы
+    auto checkFixer = [&]() {
+        if (!fixerLoad.valid()) return;
+        if (fixerLoad.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
+        fixerReady = fixerLoad.get();
+        if (fixerReady) logInfo("Словарь исправления слов: " + std::to_string(fixer.getDictionarySize()) + " слов");
+        else logWarn("Не найден словарь " + st.dictFile + ": слова не исправляются");
+        };
 
     // === ОКНО ===
     const std::string WIN = "HandTalk";
@@ -381,15 +406,25 @@ int main() {
         gs.cameras = findCameras();
         camsScanned = true;
         logInfo("Найдено камер: " + std::to_string(gs.cameras.size()));
-    };
+        };
+
+    // Исправить слова в тексте (опечатки, склейка, согласование). Если словарь не готов - текст без изменений.
+    auto fixText = [&](const std::wstring& t) -> std::wstring {
+        checkFixer();
+        if (!fixerReady) return t;
+        fixer.clear();
+        fixer.addText(t);
+        const std::wstring& r = fixer.getFinalSentence();
+        return r.empty() ? t : r;
+        };
 
     // Озвучить текст; если голос не сработал - сообщение и запись в журнал
     auto speakText = [&](const std::wstring& t) {
-        if (!speech.speak(t)) {
-            logWarn("SAPI: не удалось озвучить текст");
-            setMessage(L"Не удалось озвучить текст: проверьте русский голос Windows и звук");
-        }
-    };
+        std::wstring fixed = fixText(t);
+        if (fixed != t) setMessage(L"Исправлено: " + fixed, 8);
+        if (!voice.isReady() && voice.isLoading()) setMessage(L"Голос ещё загружается, фраза прозвучит после загрузки", 4);
+        voice.speak(fixed);
+        };
 
     auto learnReset = [&]() {
         gs.learnResult = LR_WAIT;
@@ -410,7 +445,7 @@ int main() {
         }
         stopAnim();
         if (gs.running) stopSession();
-    };
+        };
 
     // «Назад»: из раздела для разработчиков - в настройки, с остальных экранов - в меню
     auto goBack = [&]() {
@@ -519,6 +554,12 @@ int main() {
                     setMessage(L"Сначала напишите сообщение в поле ввода");
                 }
                 else {
+                    // Т9: сначала исправляем слова в поле ввода, анимация идёт по исправленному тексту
+                    std::wstring fixed = fixText(gs.replyText);
+                    if (fixed != gs.replyText) {
+                        gs.replyText = fixed;
+                        setMessage(L"Исправлено: " + fixed, 6);
+                    }
                     animLetters.clear();
                     for (wchar_t ch : gs.replyText) {
                         int i = indexFromLetter(upperRu(ch));
@@ -749,7 +790,7 @@ int main() {
                     drawHand(frame, tracks[i], col, tracks[i].id);
                 }
 
-            
+
             }
         }
 
@@ -764,7 +805,7 @@ int main() {
             L", движений " + std::to_wstring(dynKnn.size());
         is.status = status;
         if (seconds() < messageUntil) is.message = message;
-        else if (canSpeak && speech.paused()) is.message = L"Речь на паузе";
+        else if (canSpeak && voice.isPaused()) is.message = L"Речь на паузе";
 
         if (gs.running) {
             if (gs.recording) {
@@ -814,7 +855,7 @@ int main() {
     }
 
     if (gs.running) stopSession();
-    speech.stop();
+    voice.stop();
     logInfo("=== Завершение работы ===");
     logClose();
     return 0;
