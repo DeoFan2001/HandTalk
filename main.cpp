@@ -311,6 +311,49 @@ int main() {
     std::vector<int> animLetters;
     double animStart = 0;
 
+    // === ЭТАЛОННЫЕ РОЛИКИ БУКВ ===
+    // Папка lessons рядом с программой: A.mp4, B.mp4, ZH.mp4 ... (имя файла - код буквы из Alphabet.h).
+    // Ролик идёт по кругу на экране «Изучить алфавит», пока включено «Показать жест».
+    cv::VideoCapture refCap;
+    cv::Mat refFrame;
+    int refLoaded = -1, refPos = 0;
+    double refStart = 0, refFps = 25;
+    auto refPath = [](int t) -> std::string {
+        static const char* exts[] = { ".mp4", ".mov", ".avi", ".mkv", ".webm", ".wmv" };
+        for (const char* e : exts) {
+            std::string p = std::string("lessons\\") + ALPHABET[t].code + e;
+            if (std::ifstream(p, std::ios::binary).good()) return p;
+        }
+        return std::string();
+        };
+    auto refVideoFor = [&](int t, bool on) {
+        if (!on) {
+            if (refLoaded >= 0) { refCap.release(); refFrame.release(); refLoaded = -1; }
+            return;
+        }
+        if (refLoaded != t) {                              // другая буква: открываем её ролик
+            refCap.release(); refFrame.release();
+            refLoaded = t; refPos = 0;
+            const std::string p = refPath(t);
+            if (!p.empty() && refCap.open(p)) {
+                double f = refCap.get(cv::CAP_PROP_FPS);
+                refFps = (f > 1.0 && f < 241.0) ? f : 25.0;
+                refStart = seconds();
+            }
+        }
+        if (!refCap.isOpened()) return;
+        const int target = (int)((seconds() - refStart) * refFps);   // какой кадр должен быть сейчас
+        if (refFrame.empty() || target > refPos) {
+            bool ok = true;
+            while (ok && refPos < target - 1) { ok = refCap.grab(); ++refPos; }   // пропускаем лишние кадры
+            cv::Mat f;
+            ok = ok && refCap.read(f) && !f.empty();
+            ++refPos;
+            if (ok) refFrame = f;
+            else { refCap.set(cv::CAP_PROP_POS_FRAMES, 0); refStart = seconds(); refPos = 0; }   // сначала
+        }
+        };
+
     auto removeInactive = [&]() {
         tracks.erase(std::remove_if(tracks.begin(), tracks.end(),
             [](const HandTrack& t) { return !t.active; }), tracks.end());
@@ -429,7 +472,7 @@ int main() {
     auto learnReset = [&]() {
         gs.learnResult = LR_WAIT;
         gs.learnShown = 0;
-        gs.showRef = false;
+        gs.showRef = !refPath(gs.learnTarget).empty();      // есть ролик буквы - показываем его сразу
         learnCode.clear();
         learnFrames = 0; learnEmpty = 0;
         learnEng.reset();
@@ -818,7 +861,9 @@ int main() {
             }
         }
 
-        if (gs.screen == SCR_LEARN && gs.showRef) {
+        const bool wantRef = gs.screen == SCR_LEARN && gs.showRef;
+        refVideoFor(gs.learnTarget, wantRef);
+        if (wantRef) {
             const int t = gs.learnTarget;
             const std::string code = ALPHABET[t].code;
             const bool hasMove = counts.of(counts.move, code) > 0;
@@ -832,6 +877,11 @@ int main() {
             }
             else is.artNote = hasMove ? L"Жест с движением: эталона позы нет, повторите движение рукой"
                 : L"Образцов этой буквы нет: запишите их в «Настройки» - «Для разработчиков»";
+            if (!refFrame.empty()) {                              // есть эталонный ролик - он важнее рисунка руки
+                is.refVideo = refFrame;
+                is.artCaption = L"Повторите жест, как на видео";
+                is.artNote.clear();
+            }
         }
         if (gs.animOn) {
             int k = (int)((seconds() - animStart) / ANIM_STEP);

@@ -105,6 +105,7 @@ namespace HandTracker {
         std::wstring artLetter;                   // буква крупно
         std::wstring artCaption;                  // подпись сверху («Эталон», «Сообщение: 2 из 7»)
         std::wstring artNote;                     // пояснение снизу
+        cv::Mat refVideo;                         // кадр эталонного ролика буквы (если есть, показывается вместо рисунка руки)
     };
 
     class Gui {
