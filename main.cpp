@@ -19,7 +19,6 @@
 #include "Gesture.h"
 #include "GestureEngine.h"
 #include "Gui.h"
-#include "HandArt.h"
 #include "HandTracker.h"
 #include "Log.h"
 #include "MlpClassifier.h"
@@ -177,10 +176,8 @@ int main() {
     const IClassifier* clf = mlp.ready() ? static_cast<const IClassifier*>(&mlp) : static_cast<const IClassifier*>(&knn);
 
     Counts counts;
-    HandRefs refs;
     auto applySamples = [&](std::vector<Sample> stat, std::vector<SeqSample> dyn) {
         counts.pose.clear(); counts.move.clear();
-        refs = buildHandRefs(stat);
         for (const Sample& s : stat) ++counts.pose[s.code];
         for (const SeqSample& s : dyn) ++counts.move[s.code];
         knn.setSamples(std::move(stat));
@@ -308,32 +305,35 @@ int main() {
     int learnFrames = 0, learnEmpty = 0;
     int sourceBeforeLearn = 0;
     const double ANIM_STEP = 1.0;
-    std::vector<int> animLetters;
-    double animStart = 0;
+    std::vector<int> animLetters;             // буквы сообщения для анимации
+    int animIdx = 0;                          // какая буква показывается сейчас
+    double animLetterStart = 0;               // когда она началась (нужно, если для буквы нет ролика)
 
     // === ЭТАЛОННЫЕ РОЛИКИ БУКВ ===
-    // Папка lessons рядом с программой: A.mp4, B.mp4, ZH.mp4 ... (имя файла - код буквы из Alphabet.h).
-    // Ролик идёт по кругу на экране «Изучить алфавит», пока включено «Показать жест».
+    // Папка lessons рядом с программой: A.mp4, B.mp4, ... (имя файла - см. lessonName в Alphabet.h).
+    // Рука программой не рисуется: и на экране «Изучить алфавит», и в анимации сообщения показываем эти ролики.
     cv::VideoCapture refCap;
-    cv::Mat refFrame;
-    int refLoaded = -1, refPos = 0;
+    cv::Mat refFrame;                         // последний прочитанный кадр ролика
+    int refLoaded = -1, refPos = 0;           // какая буква открыта и сколько кадров прочитано
     double refStart = 0, refFps = 25;
+    bool refDone = false;                     // ролик дошёл до конца (для режима без повтора)
     auto refPath = [](int t) -> std::string {
         static const char* exts[] = { ".mp4", ".mov", ".avi", ".mkv", ".webm", ".wmv" };
         for (const char* e : exts) {
-            std::string p = std::string("lessons\\") + ALPHABET[t].code + e;
+            std::string p = std::string("lessons\\") + lessonName(ALPHABET[t].code) + e;
             if (std::ifstream(p, std::ios::binary).good()) return p;
         }
         return std::string();
         };
-    auto refVideoFor = [&](int t, bool on) {
-        if (!on) {
-            if (refLoaded >= 0) { refCap.release(); refFrame.release(); refLoaded = -1; }
+    // Показать ролик буквы t (t < 0 - выключить). loop = true: по кругу; false: один раз, потом refDone = true.
+    auto refVideoFor = [&](int t, bool loop) {
+        if (t < 0) {
+            if (refLoaded >= 0) { refCap.release(); refFrame.release(); refLoaded = -1; refDone = false; }
             return;
         }
         if (refLoaded != t) {                              // другая буква: открываем её ролик
             refCap.release(); refFrame.release();
-            refLoaded = t; refPos = 0;
+            refLoaded = t; refPos = 0; refDone = false;
             const std::string p = refPath(t);
             if (!p.empty() && refCap.open(p)) {
                 double f = refCap.get(cv::CAP_PROP_FPS);
@@ -341,7 +341,7 @@ int main() {
                 refStart = seconds();
             }
         }
-        if (!refCap.isOpened()) return;
+        if (!refCap.isOpened() || refDone) return;
         const int target = (int)((seconds() - refStart) * refFps);   // какой кадр должен быть сейчас
         if (refFrame.empty() || target > refPos) {
             bool ok = true;
@@ -350,7 +350,8 @@ int main() {
             ok = ok && refCap.read(f) && !f.empty();
             ++refPos;
             if (ok) refFrame = f;
-            else { refCap.set(cv::CAP_PROP_POS_FRAMES, 0); refStart = seconds(); refPos = 0; }   // сначала
+            else if (loop) { refCap.set(cv::CAP_PROP_POS_FRAMES, 0); refStart = seconds(); refPos = 0; }   // сначала
+            else refDone = true;                           // конец ролика, последний кадр остаётся на экране
         }
         };
 
@@ -478,7 +479,7 @@ int main() {
         learnEng.reset();
         };
 
-    auto stopAnim = [&]() { gs.animOn = false; animLetters.clear(); };
+    auto stopAnim = [&]() { gs.animOn = false; animLetters.clear(); animIdx = 0; };
 
     // Остановить запись, анимацию и видео перед уходом с экрана
     auto closeWork = [&]() {
@@ -612,7 +613,9 @@ int main() {
                         setMessage(L"В тексте нет букв алфавита для анимации");
                     }
                     else {
-                        animStart = seconds();
+                        animIdx = 0;
+                        animLetterStart = seconds();
+                        refLoaded = -1;                    // ролик первой буквы открыть заново
                         gs.animOn = true;
                     }
                 }
@@ -861,38 +864,42 @@ int main() {
             }
         }
 
-        const bool wantRef = gs.screen == SCR_LEARN && gs.showRef;
-        refVideoFor(gs.learnTarget, wantRef);
-        if (wantRef) {
-            const int t = gs.learnTarget;
-            const std::string code = ALPHABET[t].code;
-            const bool hasMove = counts.of(counts.move, code) > 0;
-            is.art = true;
-            is.artLetter = std::wstring(1, ALPHABET[t].letter);
-            is.artCaption = L"Эталон: средняя поза по вашим образцам";
-            if (refs.has[t]) {
-                is.artHasPose = true;
-                is.artFeat = refs.f[t];
-                if (hasMove) is.artNote = L"У этой буквы есть движение: после позы двигайте рукой, как при записи";
-            }
-            else is.artNote = hasMove ? L"Жест с движением: эталона позы нет, повторите движение рукой"
-                : L"Образцов этой буквы нет: запишите их в «Настройки» - «Для разработчиков»";
-            if (!refFrame.empty()) {                              // есть эталонный ролик - он важнее рисунка руки
-                is.refVideo = refFrame;
-                is.artCaption = L"Повторите жест, как на видео";
-                is.artNote.clear();
+        // --- анимация сообщения: ролики букв идут один за другим ---
+        if (gs.animOn) {
+            refVideoFor(animLetters[animIdx], false);
+            const bool hasVideo = refCap.isOpened();
+            // с роликом ждём его конца, без ролика показываем букву ANIM_STEP секунд
+            if (hasVideo ? refDone : (seconds() - animLetterStart >= ANIM_STEP)) {
+                ++animIdx;
+                animLetterStart = seconds();
+                refLoaded = -1;                            // следующий ролик открывается заново (даже у такой же буквы)
+                if (animIdx >= (int)animLetters.size()) stopAnim();
+                else refVideoFor(animLetters[animIdx], false);
             }
         }
+        // --- эталон на экране «Изучить алфавит» ---
+        const bool wantRef = !gs.animOn && gs.screen == SCR_LEARN && gs.showRef;
+        if (!gs.animOn) refVideoFor(wantRef ? gs.learnTarget : -1, true);
+
         if (gs.animOn) {
-            int k = (int)((seconds() - animStart) / ANIM_STEP);
-            if (k >= (int)animLetters.size()) stopAnim();
+            const int t = animLetters[animIdx];
+            is.art = true;
+            is.artLetter = std::wstring(1, ALPHABET[t].letter);
+            is.artCaption = L"Сообщение: буква " + std::to_wstring(animIdx + 1) + L" из " + std::to_wstring(animLetters.size());
+            if (!refFrame.empty()) is.refVideo = refFrame;
+            else is.artNote = L"Для этой буквы нет ролика в папке lessons";
+        }
+        else if (wantRef) {
+            const int t = gs.learnTarget;
+            is.art = true;
+            is.artLetter = std::wstring(1, ALPHABET[t].letter);
+            if (!refFrame.empty()) {
+                is.refVideo = refFrame;
+                is.artCaption = L"Повторите жест, как на видео";
+            }
             else {
-                const int t = animLetters[k];
-                is.art = true;
-                is.artLetter = std::wstring(1, ALPHABET[t].letter);
-                is.artCaption = L"Сообщение: буква " + std::to_wstring(k + 1) + L" из " + std::to_wstring(animLetters.size());
-                if (refs.has[t]) { is.artHasPose = true; is.artFeat = refs.f[t]; }
-                else is.artNote = L"Для этой буквы нет образца позы";
+                is.artCaption = L"Эталон";
+                is.artNote = L"Нет ролика этой буквы: положите его в папку lessons";
             }
         }
 

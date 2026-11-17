@@ -40,4 +40,12 @@ namespace HandTracker {
         return i < 0 ? (wchar_t)0 : ALPHABET[i].letter;
     }
 
+    // Имя файла ролика буквы в папке lessons (без расширения).
+    // Почти везде совпадает с кодом буквы; у твёрдого и мягкого знака файлы названы по-другому.
+    inline std::string lessonName(const std::string& code) {
+        if (code == "HARD") return "TVZNAK";
+        if (code == "SOFT") return "Miagznak";
+        return code;
+    }
+
 } // namespace HandTracker

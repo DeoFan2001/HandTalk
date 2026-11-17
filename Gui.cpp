@@ -1,6 +1,5 @@
 ﻿#include "Gui.h"
 #include "Alphabet.h"
-#include "HandArt.h"
 #include "TextRender.h"
 #include <algorithm>
 #include <map>
@@ -291,12 +290,6 @@ namespace HandTracker {
             roundRect(img, cv::Rect(P(-2.5, -4), P(2.5, 9)), 1, col);
             roundRect(img, cv::Rect(P(4, -9), P(9, 9)), 1, col);
             break;
-        case IC_HAND: {
-            HandStyle st;
-            st.skin = bg; st.edge = col; st.sleeve = col; st.sleeveOn = false;
-            drawHandArt(img, cv::Rect(c.x - size / 2, c.y - size / 2, size, size), openHandPose(), st);
-            break;
-        }
         default: break;
         }
     }
@@ -878,7 +871,7 @@ namespace HandTracker {
 
         if (is.art) {
             tmp.setTo(rgb(14, 17, 23));
-            if (!is.refVideo.empty()) {                       // эталонный ролик: вписываем под подпись
+            if (!is.refVideo.empty()) {                       // кадр ролика: вписываем под подпись
                 cv::Mat ref = is.refVideo;
                 if (ref.channels() != 3) cv::cvtColor(ref, ref, ref.channels() == 4 ? cv::COLOR_BGRA2BGR : cv::COLOR_GRAY2BGR);
                 const int bw = W2, bh = H2 - 44;
@@ -887,16 +880,10 @@ namespace HandTracker {
                 cv::resize(ref, r, cv::Size(std::max(1, (int)(ref.cols * sc)), std::max(1, (int)(ref.rows * sc))), 0, 0, cv::INTER_AREA);
                 r.copyTo(tmp(cv::Rect((bw - r.cols) / 2, 44 + (bh - r.rows) / 2, r.cols, r.rows)));
             }
-            else if (is.artHasPose) {
-                HandStyle st;
-                st.skin = rgb(240, 180, 142); st.edge = rgb(206, 132, 100); st.sleeve = rgb(38, 41, 52); st.sleeveOn = true;
-                drawHandArt(tmp, cv::Rect(60, 40, W2 - 120, H2 - 110), is.artFeat, st);
-            }
-            else if (!is.artLetter.empty()) {
+            else if (!is.artLetter.empty()) {                 // ролика нет - только буква крупно
                 centerTextX(tmp, is.artLetter, W2 / 2, H2 / 2 - lineH(170) / 2 - 20, 170, C_LETTER, true);
             }
             if (!is.artCaption.empty()) putTextW(tmp, is.artCaption, { 22, 16 }, 18, C_DIM);
-            if (is.artHasPose && is.refVideo.empty() && !is.artLetter.empty()) putTextW(tmp, is.artLetter, { 24, H2 - 120 }, 84, C_TEXT, true);
             if (!is.artNote.empty()) centerTextX(tmp, fitText(is.artNote, W2 - 60, 18, false), W2 / 2, H2 - 44, 18, C_DIM);
 
             if (!video.empty() && gs.screen == SCR_LEARN) {
