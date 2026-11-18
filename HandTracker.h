@@ -14,7 +14,7 @@ namespace HandTracker {
         int id = 0;
         int handedness = 0;          // 0/1, получено сглаживанием handProb
         float handProb = 0.5f;       // сглаженная вероятность "рука 1" (убирает мигание L/R)
-        std::array<cv::Point3f, 21> points;   // СГЛАЖЕННЫЕ точки (для рисования и распознавания жестов)
+        std::array<cv::Point3f, 21> points;   // СГЛАЖЕННЫЕ точки (для рисования и распознавания дактилем)
         std::array<cv::Point3f, 21> raw;      // СЫРЫЕ точки (из них считаем ROI на следующий кадр)
         float score = 0.0f;
         int missedFrames = 0;

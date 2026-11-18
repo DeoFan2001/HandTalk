@@ -96,7 +96,7 @@ namespace HandTracker {
     std::wstring Settings::title(int id) {
         switch (id) {
         case SET_MAXHANDS: return L"Количество рук";
-        case SET_STABLE: return L"Удержание жеста";
+        case SET_STABLE: return L"Удержание дактилемы";
         case SET_SPACE: return L"Пауза до пробела";
         case SET_SPEAK: return L"Озвучивание";
         case SET_RATE: return L"Скорость речи";
@@ -120,13 +120,13 @@ namespace HandTracker {
     std::wstring Settings::hint(int id) {
         switch (id) {
         case SET_MAXHANDS: return L"Сколько рук отслеживать: одну или две";
-        case SET_STABLE: return L"Сколько кадров держать жест до ввода буквы. Больше - меньше случайных букв";
+        case SET_STABLE: return L"Сколько кадров держать дактилему до ввода буквы. Больше - меньше случайных букв";
         case SET_SPACE: return L"Сколько кадров руки нет в кадре до ввода пробела";
         case SET_SPEAK: return L"Озвучивать написанный ответ вслух";
         case SET_RATE: return L"От -10 (медленно) до 10 (быстро)";
         case SET_VOLUME: return L"От 0 до 100 процентов";
         case SET_MINCONF: return L"Если уверенность ниже, буква по позе не вводится";
-        case SET_DYNCONF: return L"То же для жестов с движением";
+        case SET_DYNCONF: return L"То же для дактилем с движением";
         case SET_KNNK: return L"Сколько ближайших образцов голосуют за букву";
         case SET_KNNDIST: return L"Дальше этого расстояния до образца ответ «не знаю»";
         case SET_DYNDIST: return L"То же для образцов движений";
@@ -226,7 +226,7 @@ namespace HandTracker {
         }
     }
 
-    // === ЗАПИСЬ ФАЙЛА handtalk.ini ===
+    // === ЗАПИСЬ ФАЙЛА talkinghand.ini ===
     // Русский текст пишем через UTF-8 (так же, как загрузка читает файл)
     bool Settings::save(const std::string& path) const {
         std::ostringstream os;
@@ -235,14 +235,14 @@ namespace HandTracker {
         auto line = [&](const char* key, const std::string& value) { os << key << "=" << value << "\n"; };
         auto num = [&](auto v) { std::ostringstream t; t.imbue(std::locale::classic()); t << v; return t.str(); };
 
-        comment(L"handtalk.ini - настройки HandTalk (строки вида ключ=значение).");
+        comment(L"talkinghand.ini - настройки TalkingHand (строки вида ключ=значение).");
         comment(L"Файл записывает сама программа при изменении настроек; строки с # - комментарии.");
         os << "\n";
         comment(L"--- Для пользователей ---");
         comment(L"Камера: программа запоминает последнюю выбранную в списке камер (с 0)"); line("cameraIndex", num(cameraIndex));
         comment(L"Видеофайл вместо камеры (пусто - не используется)");      line("videoFile", videoFile);
         comment(L"Сколько рук отслеживать (1 или 2)");                      line("maxHands", num(maxHands));
-        comment(L"Сколько кадров держать жест до ввода буквы");             line("stableFrames", num(stableFrames));
+        comment(L"Сколько кадров держать дактилему до ввода буквы");             line("stableFrames", num(stableFrames));
         comment(L"Сколько кадров без руки до пробела");                     line("spaceFrames", num(spaceFrames));
         comment(L"Озвучивание: 1 - включено, 0 - выключено");               line("speakEnabled", speakEnabled ? "1" : "0");
         comment(L"Скорость речи (-10..10)");                                line("speechRate", num(speechRate));

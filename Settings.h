@@ -1,5 +1,5 @@
 ﻿#pragma once
-// Settings.h - настройки программы (файл handtalk.ini, строки вида ключ=значение)
+// Settings.h - настройки программы (файл talkinghand.ini, строки вида ключ=значение)
 // Если файла нет или значение испорчено, берётся значение по умолчанию: программа запускается всегда.
 #include <string>
 
@@ -8,7 +8,7 @@ namespace HandTracker {
     // === НОМЕРА НАСТРОЕК (для окон «Настройки» и «Для разработчиков») ===
     // 0..SET_USER_END-1  - для пользователей (экран «Настройки»)
     // SET_USER_END..SET_DEV_END-1 - для разработчиков (кнопки «-» и «+»)
-    // дальше - файлы: в окне только показываются, меняются вручную в handtalk.ini
+    // дальше - файлы: в окне только показываются, меняются вручную в talkinghand.ini
     enum SettingId {
         SET_MAXHANDS = 0, SET_STABLE, SET_SPACE, SET_SPEAK, SET_RATE, SET_VOLUME,        // пользователи
         SET_MINCONF, SET_DYNCONF, SET_KNNK, SET_KNNDIST, SET_DYNDIST, SET_MOVEON, SET_MOVEOFF, SET_FPS,   // разработчики
@@ -24,7 +24,7 @@ namespace HandTracker {
         int cameraIndex = 0;            // номер камеры (программа запоминает последнюю выбранную в списке камер)
         std::string videoFile;          // путь к видеофайлу (если не пусто - источник "файл")
         int maxHands = 2;               // 1 или 2
-        int stableFrames = 8;           // сколько кадров держать жест до ввода буквы
+        int stableFrames = 8;           // сколько кадров держать дактилему до ввода буквы
         int spaceFrames = 45;           // сколько кадров без руки до пробела
         int knnK = 5;
         float knnMaxDistance = 0.6f;
@@ -42,7 +42,7 @@ namespace HandTracker {
         std::string dynSamplesFile = "gestures_dynamic.csv";   // образцы движений
         std::string mlpModel = "models/gesture_mlp.onnx";
 
-        // Жесты с движением
+        // Дактилемы с движением
         float dynMaxDistance = 0.5f;    // дальше этого образцы движения считаются "не знаю"
         float dynMinConfidence = 0.6f;
         float moveOn = 0.025f;          // скорость руки (доли размера руки за кадр): выше - движение началось
@@ -60,7 +60,7 @@ namespace HandTracker {
         std::wstring valueText(int id) const;          // значение для показа в окне
         void change(int id, int dir);                  // dir = -1 («-») или +1 («+»); значение остаётся в пределах
         void reset(bool dev);                          // вернуть значения по умолчанию: dev - для разработчиков, иначе для пользователей
-        bool save(const std::string& path) const;      // записать файл handtalk.ini; false - не удалось записать
+        bool save(const std::string& path) const;      // записать файл talkinghand.ini; false - не удалось записать
     };
 
 } // namespace HandTracker

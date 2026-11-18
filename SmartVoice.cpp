@@ -139,48 +139,7 @@ namespace HandTracker {
         }
 
         std::wstring asciiOrUtf8ToWide(const std::string& s) {
-            std::wstring out;
-            out.reserve(s.size());
-            size_t i = 0;
-            while (i < s.size()) {
-                unsigned char c = (unsigned char)s[i];
-                uint32_t cp = c;
-                size_t len = 1;
-                if (c < 0x80) {
-                    cp = c;
-                } else if ((c & 0xE0) == 0xC0 && i + 1 < s.size() && ((unsigned char)s[i + 1] & 0xC0) == 0x80) {
-                    cp = ((uint32_t)(c & 0x1F) << 6) | ((uint32_t)(unsigned char)s[i + 1] & 0x3F);
-                    len = 2;
-                } else if ((c & 0xF0) == 0xE0 && i + 2 < s.size() &&
-                           ((unsigned char)s[i + 1] & 0xC0) == 0x80 && ((unsigned char)s[i + 2] & 0xC0) == 0x80) {
-                    cp = ((uint32_t)(c & 0x0F) << 12) | (((uint32_t)(unsigned char)s[i + 1] & 0x3F) << 6) |
-                         ((uint32_t)(unsigned char)s[i + 2] & 0x3F);
-                    len = 3;
-                } else if ((c & 0xF8) == 0xF0 && i + 3 < s.size() &&
-                           ((unsigned char)s[i + 1] & 0xC0) == 0x80 &&
-                           ((unsigned char)s[i + 2] & 0xC0) == 0x80 &&
-                           ((unsigned char)s[i + 3] & 0xC0) == 0x80) {
-                    cp = ((uint32_t)(c & 0x07) << 18) | (((uint32_t)(unsigned char)s[i + 1] & 0x3F) << 12) |
-                         (((uint32_t)(unsigned char)s[i + 2] & 0x3F) << 6) | ((uint32_t)(unsigned char)s[i + 3] & 0x3F);
-                    len = 4;
-                } else {
-                    ++i;
-                    continue;
-                }
-                i += len;
-                if constexpr (sizeof(wchar_t) == 2) {
-                    if (cp <= 0xFFFF) {
-                        out.push_back((wchar_t)cp);
-                    } else if (cp <= 0x10FFFF) {
-                        cp -= 0x10000;
-                        out.push_back((wchar_t)(0xD800 + (cp >> 10)));
-                        out.push_back((wchar_t)(0xDC00 + (cp & 0x3FF)));
-                    }
-                } else {
-                    out.push_back((wchar_t)cp);
-                }
-            }
-            return out;
+            return pathFromUtf8(s).wstring();
         }
 
         std::wstring toLowerSimple(std::wstring s) {
@@ -291,74 +250,34 @@ namespace HandTracker {
             return res;
         }
 
+        std::unordered_set<std::wstring> wordSet(const wchar_t* s) {
+            std::unordered_set<std::wstring> out;
+            while (*s) {
+                while (*s == L' ' || *s == L'\n' || *s == L'\r' || *s == L'\t') ++s;
+                const wchar_t* st = s;
+                while (*s && *s != L' ' && *s != L'\n' && *s != L'\r' && *s != L'\t') ++s;
+                if (s > st) out.emplace(st, s);
+            }
+            return out;
+        }
+
         const std::unordered_map<std::wstring, std::wstring>& unambiguousYoMap() {
-            static const std::unordered_map<std::wstring, std::wstring> m = {
-                // Глаголы движения/действия
-                {L"идет", L"идёт"}, {L"идем", L"идём"}, {L"идешь", L"идёшь"}, {L"идете", L"идёте"},
-                {L"пойдет", L"пойдёт"}, {L"пойдешь", L"пойдёшь"}, {L"пойдем", L"пойдём"}, {L"пойдете", L"пойдёте"},
-                {L"придет", L"придёт"}, {L"придешь", L"придёшь"}, {L"придем", L"придём"}, {L"придете", L"придёте"},
-                {L"найдет", L"найдёт"}, {L"найдешь", L"найдёшь"}, {L"найдем", L"найдём"}, {L"найдете", L"найдёте"},
-                {L"дойдет", L"дойдёт"}, {L"уйдет", L"уйдёт"}, {L"зайдет", L"зайдёт"}, {L"подойдет", L"подойдёт"},
-                {L"перейдет", L"перейдёт"}, {L"пройдет", L"пройдёт"}, {L"войдет", L"войдёт"},
-                {L"пришел", L"пришёл"}, {L"пошел", L"пошёл"}, {L"ушел", L"ушёл"}, {L"нашел", L"нашёл"},
-                {L"вошел", L"вошёл"}, {L"дошел", L"дошёл"}, {L"подошел", L"подошёл"}, {L"прошел", L"прошёл"}, {L"зашел", L"зашёл"},
-                {L"шел", L"шёл"}, {L"принес", L"принёс"}, {L"унес", L"унёс"}, {L"привез", L"привёз"},
-                {L"привел", L"привёл"}, {L"увел", L"увёл"},
-                {L"провел", L"провёл"}, {L"завел", L"завёл"}, {L"навел", L"навёл"}, {L"прочел", L"прочёл"},
-                {L"отчет", L"отчёт"}, {L"учет", L"учёт"}, {L"расчет", L"расчёт"}, {L"перечет", L"перечёт"},
-                {L"живет", L"живёт"}, {L"живем", L"живём"}, {L"живешь", L"живёшь"}, {L"живете", L"живёте"},
-                {L"дает", L"даёт"}, {L"даем", L"даём"}, {L"даешь", L"даёшь"}, {L"даете", L"даёте"},
-                {L"берет", L"берёт"}, {L"берем", L"берём"}, {L"берешь", L"берёшь"}, {L"берете", L"берёте"},
-                {L"ведет", L"ведёт"}, {L"ведем", L"ведём"}, {L"ведешь", L"ведёшь"}, {L"ведете", L"ведёте"},
-                {L"возьмет", L"возьмёт"}, {L"возьмем", L"возьмём"}, {L"возьмешь", L"возьмёшь"}, {L"возьмете", L"возьмёте"},
-                {L"вернет", L"вернёт"}, {L"вернем", L"вернём"}, {L"вернется", L"вернётся"},
-                {L"вернемся", L"вернёмся"}, {L"вернешься", L"вернёшься"}, {L"вернетесь", L"вернётесь"},
-                {L"пьет", L"пьёт"}, {L"пьем", L"пьём"}, {L"пьешь", L"пьёшь"}, {L"пьете", L"пьёте"},
-                {L"ждет", L"ждёт"}, {L"ждем", L"ждём"}, {L"ждешь", L"ждёшь"}, {L"ждете", L"ждёте"},
-                {L"поймет", L"поймёт"}, {L"поймем", L"поймём"}, {L"поймешь", L"поймёшь"}, {L"поймете", L"поймёте"},
-                {L"начнет", L"начнёт"}, {L"начнем", L"начнём"}, {L"начнешь", L"начнёшь"}, {L"начнете", L"начнёте"},
-                {L"зовет", L"зовёт"}, {L"зовем", L"зовём"}, {L"несет", L"несёт"}, {L"несем", L"несём"},
-                {L"везет", L"везёт"}, {L"везем", L"везём"}, {L"течет", L"течёт"}, {L"печет", L"печёт"},
-                {L"включен", L"включён"}, {L"сохранен", L"сохранён"}, {L"определен", L"определён"},
-                {L"определенный", L"определённый"}, {L"определенная", L"определённая"},
-                {L"определенное", L"определённое"}, {L"определенные", L"определённые"},
-                // Наречия, местоимения, частицы, существительные
-                {L"еще", L"ещё"}, {L"ее", L"её"}, {L"нее", L"неё"}, {L"мое", L"моё"}, {L"твое", L"твоё"}, {L"свое", L"своё"},
-                {L"причем", L"причём"}, {L"все-таки", L"всё-таки"}, {L"вдвоем", L"вдвоём"}, {L"втроем", L"втроём"},
-                {L"вперед", L"вперёд"}, {L"заем", L"заём"}, {L"наем", L"наём"},
-                {L"объем", L"объём"}, {L"объема", L"объёма"}, {L"разъем", L"разъём"}, {L"прием", L"приём"}, {L"приема", L"приёма"},
-                {L"ребенок", L"ребёнок"}, {L"учеба", L"учёба"}, {L"учебы", L"учёбы"}, {L"учебе", L"учёбе"}, {L"учебу", L"учёбу"}, {L"учебой", L"учёбой"},
-                {L"елка", L"ёлка"}, {L"елки", L"ёлки"}, {L"елке", L"ёлке"}, {L"елку", L"ёлку"}, {L"елкой", L"ёлкой"},
-                {L"теща", L"тёща"}, {L"тещи", L"тёщи"}, {L"теще", L"тёще"}, {L"тещу", L"тёщу"}, {L"тещей", L"тёщей"},
-                {L"свекла", L"свёкла"}, {L"свеклы", L"свёклы"}, {L"свекле", L"свёкле"}, {L"свеклу", L"свёклу"},
-                {L"звезды", L"звёзды"}, {L"слезы", L"слёзы"}, {L"лед", L"лёд"}, {L"мед", L"мёд"}, {L"щетка", L"щётка"}, {L"щеки", L"щёки"},
-                {L"самолет", L"самолёт"}, {L"самолета", L"самолёта"}, {L"самолете", L"самолёте"}, {L"самолеты", L"самолёты"},
-                {L"вертолет", L"вертолёт"}, {L"полет", L"полёт"}, {L"кошелек", L"кошелёк"}, {L"счет", L"счёт"}, {L"счета", L"счёта"},
-                {L"шофер", L"шофёр"}, {L"актер", L"актёр"}, {L"партнер", L"партнёр"}, {L"тренажер", L"тренажёр"},
-                {L"силен", L"силён"}, {L"умен", L"умён"}, {L"веселый", L"весёлый"}, {L"веселая", L"весёлая"},
-                {L"веселое", L"весёлое"}, {L"веселые", L"весёлые"},
-                {L"жесткий", L"жёсткий"}, {L"жесткая", L"жёсткая"}, {L"жесткое", L"жёсткое"}, {L"жестко", L"жёстко"},
-                {L"четкий", L"чёткий"}, {L"четкая", L"чёткая"}, {L"четкое", L"чёткое"}, {L"четко", L"чётко"},
-                {L"серьезно", L"серьёзно"}, {L"серьезный", L"серьёзный"}, {L"серьезная", L"серьёзная"},
-                {L"серьезное", L"серьёзное"}, {L"серьезные", L"серьёзные"},
-                // Частые прилагательные с безусловным 'ё' в корне
-                {L"черный", L"чёрный"}, {L"черная", L"чёрная"}, {L"черное", L"чёрное"}, {L"черные", L"чёрные"},
-                {L"черного", L"чёрного"}, {L"черному", L"чёрному"}, {L"черным", L"чёрным"}, {L"черном", L"чёрном"}, {L"черной", L"чёрной"}, {L"черную", L"чёрную"},
-                {L"зеленый", L"зелёный"}, {L"зеленая", L"зелёная"}, {L"зеленое", L"зелёное"}, {L"зеленые", L"зелёные"},
-                {L"зеленого", L"зелёного"}, {L"зеленому", L"зелёному"}, {L"зеленым", L"зелёным"}, {L"зеленом", L"зелёном"}, {L"зеленой", L"зелёной"}, {L"зеленую", L"зелёную"},
-                {L"желтый", L"жёлтый"}, {L"желтая", L"жёлтая"}, {L"желтое", L"жёлтое"}, {L"желтые", L"жёлтые"},
-                {L"желтого", L"жёлтого"}, {L"желтому", L"жёлтому"}, {L"желтым", L"жёлтым"}, {L"желтой", L"жёлтой"}, {L"желтую", L"жёлтую"},
-                {L"теплый", L"тёплый"}, {L"теплая", L"тёплая"}, {L"теплое", L"тёплое"}, {L"теплые", L"тёплые"},
-                {L"теплого", L"тёплого"}, {L"теплому", L"тёплому"}, {L"теплым", L"тёплым"}, {L"теплом", L"тёплом"}, {L"теплой", L"тёплой"}, {L"теплую", L"тёплую"},
-                {L"темный", L"тёмный"}, {L"темная", L"тёмная"}, {L"темное", L"тёмное"}, {L"темные", L"тёмные"},
-                {L"темного", L"тёмного"}, {L"темному", L"тёмному"}, {L"темным", L"тёмным"}, {L"темном", L"тёмном"}, {L"темной", L"тёмной"}, {L"темную", L"тёмную"},
-                {L"легкий", L"лёгкий"}, {L"легкая", L"лёгкая"}, {L"легкое", L"лёгкое"}, {L"легкие", L"лёгкие"},
-                {L"легкого", L"лёгкого"}, {L"легкому", L"лёгкому"}, {L"легким", L"лёгким"}, {L"легком", L"лёгком"}, {L"легкой", L"лёгкой"}, {L"легкую", L"лёгкую"},
-                {L"тяжелый", L"тяжёлый"}, {L"тяжелая", L"тяжёлая"}, {L"тяжелое", L"тяжёлое"}, {L"тяжелые", L"тяжёлые"},
-                {L"тяжелого", L"тяжёлого"}, {L"тяжелому", L"тяжёлому"}, {L"тяжелым", L"тяжёлым"}, {L"тяжелом", L"тяжёлом"}, {L"тяжелой", L"тяжёлой"}, {L"тяжелую", L"тяжёлую"},
-                {L"дешевый", L"дешёвый"}, {L"дешевая", L"дешёвая"}, {L"дешевое", L"дешёвое"}, {L"дешевые", L"дешёвые"},
-                {L"далекий", L"далёкий"}, {L"далекая", L"далёкая"}, {L"далекое", L"далёкое"}, {L"далекие", L"далёкие"}
-            };
+            static const auto m = []() {
+                std::unordered_map<std::wstring, std::wstring> out;
+                std::ifstream file(pathFromUtf8("yo_ru.txt"), std::ios::binary);
+                if (!file.is_open()) return out;
+                std::string line;
+                while (std::getline(file, line)) {
+                    if (!line.empty() && line.back() == '\r') line.pop_back();
+                    if (line.empty() || line[0] == '#') continue;
+                    size_t tab = line.find('\t');
+                    if (tab == std::string::npos) continue;
+                    std::wstring k = asciiOrUtf8ToWide(line.substr(0, tab));
+                    std::wstring v = asciiOrUtf8ToWide(line.substr(tab + 1));
+                    if (!k.empty() && !v.empty()) out.emplace(std::move(k), std::move(v));
+                }
+                return out;
+            }();
             return m;
         }
 
@@ -383,28 +302,17 @@ namespace HandTracker {
             const std::wstring next2 = (hasNext && idx + 2 < toks.size() && !toks[idx + 2].clauseBreakBefore && !toks[idx + 2].commaBefore)
                                        ? toks[idx + 2].lower : L"";
 
-            static const std::unordered_set<std::wstring> vseAfterPlurals = {
-                L"мы", L"вы", L"они", L"эти", L"те", L"остальные", L"прочие", L"другие",
-                L"наши", L"ваши", L"мои", L"твои", L"свои", L"его", L"ее", L"её", L"их",
-                L"два", L"две", L"три", L"четыре", L"пять", L"шесть", L"семь", L"восемь",
-                L"девять", L"десять", L"двое", L"трое", L"четверо", L"вдвоем", L"вдвоём",
-                L"втроем", L"втроём", L"вчетвером", L"люди", L"друзья", L"дела", L"слова",
-                L"дома", L"дни", L"годы", L"новости", L"вопросы", L"задачи", L"проблемы",
-                L"машины", L"окна", L"руки", L"ноги", L"глаза", L"места", L"города",
-                L"вечера", L"студенты", L"родители", L"дети", L"гости", L"коллеги"
-            };
-            static const std::unordered_set<std::wstring> singularNonPluralT = {
-                L"может", L"будет", L"идет", L"идёт", L"нет", L"ответ", L"привет", L"секрет", L"совет",
-                L"свет", L"цвет", L"билет", L"пакет", L"обед", L"интернет", L"университет"
-            };
-            static const std::unordered_set<std::wstring> vsyoNextPredicates = {
-                L"равно", L"время", L"еще", L"ещё", L"такое", L"так", L"это", L"то", L"дело",
-                L"было", L"стало", L"будет", L"прошло", L"получилось", L"работает", L"идет", L"идёт",
-                L"хорошо", L"плохо", L"нормально", L"отлично", L"понятно", L"ясно", L"готово",
-                L"просто", L"сложно", L"важно", L"верно", L"правильно", L"красиво", L"интересно",
-                L"весело", L"грустно", L"нужно", L"надо", L"нельзя", L"можно", L"лучше", L"хуже",
-                L"больше", L"меньше", L"быстрее", L"медленнее", L"труднее", L"проще", L"дальше", L"ближе"
-            };
+            static const auto vseAfterPlurals = wordSet(
+                L"мы вы они эти те остальные прочие другие наши ваши мои твои свои его ее её их два две три четыре пять шесть "
+                L"семь восемь девять десять двое трое четверо вдвоем вдвоём втроем втроём вчетвером люди друзья дела слова "
+                L"дома дни годы новости вопросы задачи проблемы машины окна руки ноги глаза места города вечера студенты "
+                L"родители дети гости коллеги");
+            static const auto singularNonPluralT = wordSet(
+                L"может будет идет идёт нет ответ привет секрет совет свет цвет билет пакет обед интернет университет");
+            static const auto vsyoNextPredicates = wordSet(
+                L"равно время еще ещё такое так это то дело было стало будет прошло получилось работает идет идёт хорошо "
+                L"плохо нормально отлично понятно ясно готово просто сложно важно верно правильно красиво интересно весело "
+                L"грустно нужно надо нельзя можно лучше хуже больше меньше быстрее медленнее труднее проще дальше ближе");
 
             // Строгая защита множественного «все»
             if (commaAfter && next == L"кто") return L"все";
@@ -485,238 +393,58 @@ namespace HandTracker {
             auto yoIt = yoMap.find(w);
             if (yoIt != yoMap.end()) return yoIt->second;
 
-            // 3. Омографы с контекстным выбором ударной гласной
-            if (w == L"дела") {
-                static const std::unordered_set<std::wstring> genTriggers = {
-                    L"без", L"от", L"для", L"до", L"из", L"нет", L"много", L"мало", L"сколько",
-                    L"больше", L"меньше", L"какого", L"этого", L"того", L"моего", L"твоего",
-                    L"своего", L"вашего", L"нашего", L"общего", L"большого", L"хорошего",
-                    L"доброго", L"нового", L"важного", L"одного", L"суть", L"мастер"
-                };
-                return (genTriggers.count(prev) || next == L"нет") ? L"де\u0301ла" : L"дела\u0301";
-            }
-            if (w == L"дома") {
-                static const std::unordered_set<std::wstring> plPrev = {
-                    L"новые", L"большие", L"маленькие", L"красивые", L"старые", L"высокие", L"низкие",
-                    L"разные", L"все", L"эти", L"те", L"наши", L"ваши", L"мои", L"твои", L"свои",
-                    L"соседние", L"жилые", L"многоэтажные", L"деревянные", L"каменные", L"кирпичные"
-                };
-                static const std::unordered_set<std::wstring> plNext = {
-                    L"стоят", L"строят", L"строятся", L"видны", L"горят", L"растут",
-                    L"высокие", L"большие", L"красивые", L"новые", L"старые"
-                };
-                return (plPrev.count(prev) || plNext.count(next)) ? L"дома\u0301" : L"до\u0301ма";
-            }
-            if (w == L"воды") {
-                static const std::unordered_set<std::wstring> plWater = {
-                    L"теплые", L"тёплые", L"минеральные", L"грунтовые", L"подземные",
-                    L"сточные", L"лечебные", L"целебные", L"термальные", L"вешние", L"талые"
-                };
-                return (plWater.count(prev) || next == L"вышли" || next == L"поднялись") ? L"во\u0301ды" : L"воды\u0301";
-            }
-            if (w == L"руки" || w == L"ноги") {
-                static const std::unordered_set<std::wstring> genTriggers = {
-                    L"без", L"у", L"от", L"до", L"около", L"возле", L"нет", L"много", L"мало",
-                    L"левой", L"правой", L"больной", L"здоровой", L"одной", L"этой", L"той", L"моей", L"твоей"
-                };
-                bool gen = genTriggers.count(prev) || next == L"нет";
-                if (w == L"руки") return gen ? L"руки\u0301" : L"ру\u0301ки";
-                return gen ? L"ноги\u0301" : L"но\u0301ги";
-            }
-            if (w == L"окна") {
-                static const std::unordered_set<std::wstring> genTriggers = {
-                    L"из", L"у", L"от", L"до", L"около", L"возле", L"мимо", L"без", L"нет",
-                    L"два", L"три", L"четыре", L"одного", L"этого", L"того", L"моего", L"нашего",
-                    L"большого", L"маленького", L"открытого", L"закрытого", L"первого"
-                };
-                return (genTriggers.count(prev) || next == L"нет") ? L"окна\u0301" : L"о\u0301кна";
-            }
-            if (w == L"слова") {
-                static const std::unordered_set<std::wstring> genTriggers = {
-                    L"без", L"ни", L"от", L"из", L"после", L"до", L"нет", L"два", L"три", L"четыре",
-                    L"каждого", L"первого", L"последнего", L"этого", L"того", L"одного",
-                    L"доброго", L"плохого", L"нового", L"русского", L"главного", L"нужного", L"смысл", L"значение"
-                };
-                return (genTriggers.count(prev) || next == L"нет") ? L"сло\u0301ва" : L"слова\u0301";
-            }
-            if (w == L"глаза") {
-                static const std::unordered_set<std::wstring> genTriggers = {
-                    L"без", L"из", L"у", L"от", L"около", L"возле", L"левого", L"правого",
-                    L"одного", L"больного", L"два", L"три", L"четыре", L"открытого", L"закрытого"
-                };
-                return genTriggers.count(prev) ? L"гла\u0301за" : L"глаза\u0301";
-            }
-            if (w == L"душа") {
-                static const std::unordered_set<std::wstring> genTriggers = {
-                    L"без", L"из", L"после", L"для", L"у", L"до", L"от",
-                    L"холодного", L"теплого", L"тёплого", L"горячего", L"летнего", L"контрастного"
-                };
-                return genTriggers.count(prev) ? L"ду\u0301ша" : L"душа\u0301";
-            }
-            if (w == L"города") {
-                static const std::unordered_set<std::wstring> genTriggers = {
-                    L"из", L"до", L"от", L"у", L"около", L"возле", L"без", L"мимо", L"центр", L"центре",
-                    L"окраина", L"жители", L"жителей", L"мэр", L"два", L"три", L"четыре",
-                    L"нашего", L"вашего", L"моего", L"этого", L"того", L"большого", L"маленького",
-                    L"родного", L"красивого", L"нового", L"старого", L"каждого", L"одного"
-                };
-                return genTriggers.count(prev) ? L"го\u0301рода" : L"города\u0301";
-            }
-            if (w == L"вечера") {
-                static const std::unordered_set<std::wstring> plTriggers = {
-                    L"теплые", L"тёплые", L"длинные", L"зимние", L"летние", L"осенние", L"весенние",
-                    L"добрые", L"тихие", L"холодные", L"хорошие", L"уютные", L"эти", L"те", L"все", L"наши"
-                };
-                return (plTriggers.count(prev) || next == L"будут" || next == L"были" || next == L"стали")
-                       ? L"вечера\u0301" : L"ве\u0301чера";
-            }
-            if (w == L"утра") {
-                static const std::unordered_set<std::wstring> genAdj = {
-                    L"доброго", L"раннего", L"прекрасного", L"свежего", L"следующего",
-                    L"хорошего", L"новогоднего", L"воскресного", L"субботнего", L"сегодняшнего", L"завтрашнего"
-                };
-                static const std::unordered_set<std::wstring> timeTriggers = {
-                    L"с", L"до", L"от", L"около", L"после", L"часа", L"часов", L"половина",
-                    L"один", L"два", L"три", L"четыре", L"пять", L"шесть", L"семь", L"восемь",
-                    L"девять", L"десять", L"одиннадцать", L"двенадцать",
-                    L"двух", L"трех", L"трёх", L"четырех", L"четырёх", L"пяти", L"шести",
-                    L"семи", L"восьми", L"девяти", L"десяти", L"одиннадцати", L"двенадцати", L"рассвета"
-                };
-                if (genAdj.count(prev)) return L"у\u0301тра";
-                if (prev == L"самого") return (prev2 == L"с" || prev2 == L"до" || prev2 == L"от") ? L"утра\u0301" : L"у\u0301тра";
-                if (timeTriggers.count(prev)) return L"утра\u0301";
-                return L"у\u0301тра";
-            }
-            if (w == L"стоит") {
-                static const std::unordered_set<std::wstring> locPreps = {
-                    L"в", L"во", L"на", L"у", L"под", L"возле", L"около", L"рядом", L"перед", L"за", L"тут", L"там", L"дома"
-                };
-                static const std::unordered_set<std::wstring> costPrev = {
-                    L"сколько", L"много", L"мало", L"дорого", L"дешево", L"дёшево", L"недорого", L"сколько-то"
-                };
-                static const std::unordered_set<std::wstring> costNext = {
-                    L"дорого", L"дешево", L"дёшево", L"недорого", L"рублей", L"рубля", L"рубль",
-                    L"тысяч", L"тысячи", L"тысячу", L"миллион", L"миллиона", L"миллионов",
-                    L"копеек", L"денег", L"много", L"мало", L"ли", L"внимания", L"времени", L"труда", L"того"
-                };
-                bool nextInf = !next.empty() &&
-                               (endsWithW(next, L"ть") || endsWithW(next, L"ти") ||
-                                endsWithW(next, L"чь") || endsWithW(next, L"ться"));
-                bool cost = costPrev.count(prev) || costNext.count(next) || nextInf ||
-                            ((prev2 == L"ничего" || prev2 == L"того") && prev == L"не") ||
-                            ((prev == L"не" || prev == L"это" || prev == L"того") && !locPreps.count(next));
-                return cost ? L"сто\u0301ит" : L"стои\u0301т";
-            }
-            if (w == L"потом") {
-                static const std::unordered_set<std::wstring> sweatPrev = {
-                    L"с", L"под", L"от", L"пахнет", L"покрыт", L"покрыта", L"покрыты", L"облит", L"седьмым", L"холодным"
-                };
-                return sweatPrev.count(prev) ? L"по\u0301том" : L"пото\u0301м";
-            }
-            if (w == L"уже") {
-                static const std::unordered_set<std::wstring> narrowPrev = {
-                    L"намного", L"гораздо", L"чуть", L"еще", L"ещё", L"немного", L"значительно",
-                    L"стала", L"стал", L"стало", L"была", L"был", L"было", L"будет", L"оказалась",
-                    L"дорога", L"улица", L"тропа", L"река", L"проход", L"вход", L"дверь"
-                };
-                return (narrowPrev.count(prev) || next == L"чем") ? L"у\u0301же" : L"уже\u0301";
-            }
-            if (w == L"сорок") {
-                static const std::unordered_set<std::wstring> birdPrev = {
-                    L"стая", L"много", L"несколько", L"пять", L"десять", L"белых", L"черных", L"чёрных"
-                };
-                return birdPrev.count(prev) ? L"соро\u0301к" : L"со\u0301рок";
-            }
-            if (w == L"дорогой") {
-                static const std::unordered_set<std::wstring> roadPrev = {
-                    L"этой", L"той", L"другой", L"длинной", L"короткой", L"прямой", L"обратной",
-                    L"всей", L"всю", L"хорошей", L"ровной", L"новой", L"старой", L"знакомой",
-                    L"лесной", L"горной", L"пыльной", L"скользкой", L"темной", L"тёмной",
-                    L"светлой", L"узкой", L"широкой", L"какой", L"одной",
-                    L"идти", L"иду", L"идет", L"идёт", L"шел", L"шёл", L"шла", L"шли",
-                    L"ехать", L"еду", L"едет", L"ехал", L"пойти", L"поехать", L"бежать", L"пройти", L"вернуться"
-                };
-                return (roadPrev.count(prev) || next == L"домой" || next == L"обратно")
-                       ? L"доро\u0301гой" : L"дорого\u0301й";
-            }
-            if (w == L"большая" || w == L"большую") {
-                bool comp = (next == L"часть" || next == L"половина" || next == L"степень" ||
-                             next == L"частью" || next == L"половину" || next == L"степени");
-                if (w == L"большая") return comp ? L"бо\u0301льшая" : L"больша\u0301я";
-                return comp ? L"бо\u0301льшую" : L"большу\u0301ю";
-            }
-            if (w == L"большим" || w == L"больших") {
-                bool comp = (prev == L"гораздо" || prev == L"намного" || prev == L"значительно" ||
-                             next == L"счетом" || next == L"счётом" || next == L"количеством");
-                if (w == L"большим") return comp ? L"бо\u0301льшим" : L"больши\u0301м";
-                return comp ? L"бо\u0301льших" : L"больши\u0301х";
-            }
-            if (w == L"моя") {
-                static const std::unordered_set<std::wstring> washObj = {
-                    L"пол", L"полы", L"посуду", L"руки", L"окна", L"машину", L"чашку", L"лицо"
-                };
-                return washObj.count(next) ? L"мо\u0301я" : L"моя";
-            }
-            if (w == L"мою") {
-                static const std::unordered_set<std::wstring> washObj = {
-                    L"руки", L"посуду", L"пол", L"полы", L"голову", L"чашку", L"лицо", L"яблоки", L"овощи", L"фрукты"
-                };
-                return washObj.count(next) ? L"мо\u0301ю" : L"мою\u0301";
-            }
-            if (w == L"бегу") {
-                return (prev == L"по" || prev == L"о" || prev == L"к") ? L"бе\u0301гу" : L"бегу\u0301";
+            // 3. Омографы из файла homographs_ru.txt
+            struct Homograph { std::wstring w, hit, miss, prevTrig, nextTrig; };
+            static const auto kHomographs = []() {
+                std::vector<Homograph> out;
+                std::ifstream file(pathFromUtf8("homographs_ru.txt"), std::ios::binary);
+                if (!file.is_open()) return out;
+                std::string line;
+                while (std::getline(file, line)) {
+                    if (!line.empty() && line.back() == '\r') line.pop_back();
+                    if (line.empty() || line[0] == '#') continue;
+                    std::wstring wl = asciiOrUtf8ToWide(line);
+                    std::wstring f[5];
+                    size_t p = 0;
+                    for (int k = 0; k < 5 && p <= wl.size(); ++k) {
+                        size_t t = (k < 4) ? wl.find(L'\t', p) : std::wstring::npos;
+                        f[k] = (t == std::wstring::npos) ? wl.substr(p) : wl.substr(p, t - p);
+                        if (t == std::wstring::npos) break;
+                        p = t + 1;
+                    }
+                    if (!f[0].empty()) out.push_back({std::move(f[0]), std::move(f[1]), std::move(f[2]), std::move(f[3]), std::move(f[4])});
+                }
+                return out;
+            }();
+            auto inList = [](const std::wstring& list, const std::wstring& word) {
+                if (word.empty() || list.empty()) return false;
+                return (L" " + list + L" ").find(L" " + word + L" ") != std::wstring::npos;
+            };
+            for (const auto& h : kHomographs) {
+                if (w == h.w) return (inList(h.prevTrig, prev) || inList(h.nextTrig, next)) ? h.hit : h.miss;
             }
             if (w == L"начала") {
-                bool gen = (prev == L"с" || prev == L"до" || prev == L"от" || prev == L"после" ||
-                            prev == L"у" || (prev == L"самого" && (prev2 == L"с" || prev2 == L"до" || prev2 == L"от")));
+                bool gen = (prev == L"с" || prev == L"до" || prev == L"от" || prev == L"после" || prev == L"у" ||
+                            (prev == L"самого" && (prev2 == L"с" || prev2 == L"до" || prev2 == L"от")));
                 return gen ? L"нача\u0301ла" : L"начала\u0301";
             }
-            if (w == L"спала") {
-                static const std::unordered_set<std::wstring> dropSubj = {
-                    L"температура", L"жара", L"вода", L"боль", L"опухоль", L"усталость", L"волна"
-                };
-                return dropSubj.count(prev) ? L"спа\u0301ла" : L"спала\u0301";
+            if (w == L"утра") {
+                static const wchar_t* genAdj = L"доброго раннего прекрасного свежего следующего хорошего новогоднего воскресного субботнего сегодняшнего завтрашнего";
+                static const wchar_t* timeTrig = L"с до от около после часа часов половина один два три четыре пять шесть семь восемь девять десять одиннадцать двенадцать двух трех трёх четырех четырёх пяти шести семи восьми девяти десяти одиннадцати двенадцати рассвета";
+                if (inList(genAdj, prev)) return L"у\u0301тра";
+                if (prev == L"самого") return (prev2 == L"с" || prev2 == L"до" || prev2 == L"от") ? L"утра\u0301" : L"у\u0301тра";
+                return inList(timeTrig, prev) ? L"утра\u0301" : L"у\u0301тра";
             }
-            if (w == L"жила") {
-                return (prev == L"золотая" || prev == L"толстая" || prev == L"тонкая" || prev == L"водная")
-                       ? L"жи\u0301ла" : L"жила\u0301";
-            }
-            if (w == L"замок") {
-                static const std::unordered_set<std::wstring> castleAdj = {
-                    L"старый", L"древний", L"средневековый", L"королевский", L"рыцарский",
-                    L"воздушный", L"песочный", L"каменный", L"красивый", L"мрачный", L"огромный", L"старинный"
-                };
-                return castleAdj.count(prev) ? L"за\u0301мок" : L"замо\u0301к";
-            }
-            if (w == L"места") {
-                static const std::unordered_set<std::wstring> plTriggers = {
-                    L"эти", L"те", L"наши", L"ваши", L"мои", L"твои", L"свои", L"все", L"свободные",
-                    L"хорошие", L"красивые", L"новые", L"разные", L"задние", L"передние", L"первые"
-                };
-                return (plTriggers.count(prev) || next == L"свободны" || next == L"заняты" || next == L"есть")
-                       ? L"места\u0301" : L"ме\u0301ста";
-            }
-            if (w == L"письма") {
-                static const std::unordered_set<std::wstring> genTriggers = {
-                    L"без", L"от", L"для", L"нет", L"из", L"до", L"два", L"три", L"четыре",
-                    L"этого", L"того", L"одного", L"нового", L"моего", L"вашего", L"длинного", L"важного"
-                };
-                return (genTriggers.count(prev) || next == L"нет") ? L"письма\u0301" : L"пи\u0301сьма";
-            }
-            if (w == L"числа") {
-                static const std::unordered_set<std::wstring> genTriggers = {
-                    L"без", L"от", L"до", L"из", L"какого", L"первого", L"второго", L"третьего",
-                    L"четвертого", L"пятого", L"десятого", L"двадцатого", L"два", L"три", L"четыре",
-                    L"этого", L"того", L"одного", L"нового", L"целого"
-                };
-                return genTriggers.count(prev) ? L"числа\u0301" : L"чи\u0301сла";
-            }
-            if (w == L"лица") {
-                static const std::unordered_set<std::wstring> genTriggers = {
-                    L"с", L"без", L"от", L"до", L"черты", L"выражение", L"два", L"три", L"четыре",
-                    L"этого", L"того", L"одного", L"знакомого", L"своего"
-                };
-                return genTriggers.count(prev) ? L"лица\u0301" : L"ли\u0301ца";
+            if (w == L"стоит") {
+                static const wchar_t* locPreps = L"в во на у под возле около рядом перед за тут там дома";
+                static const wchar_t* costPrev = L"сколько много мало дорого дешево дёшево недорого сколько-то";
+                static const wchar_t* costNext = L"дорого дешево дёшево недорого рублей рубля рубль тысяч тысячи тысячу миллион миллиона миллионов копеек денег много мало ли внимания времени труда того";
+                bool nextInf = !next.empty() && (endsWithW(next, L"ть") || endsWithW(next, L"ти") ||
+                                                 endsWithW(next, L"чь") || endsWithW(next, L"ться"));
+                bool cost = inList(costPrev, prev) || inList(costNext, next) || nextInf ||
+                            ((prev2 == L"ничего" || prev2 == L"того") && prev == L"не") ||
+                            ((prev == L"не" || prev == L"это" || prev == L"того") && !inList(locPreps, next));
+                return cost ? L"сто\u0301ит" : L"стои\u0301т";
             }
             return L"";
         }
@@ -1012,6 +740,9 @@ namespace HandTracker {
                 return 0;
             }
             // Компактифицируем прочитанный префикс на рабочем потоке (никогда в audio callback)
+            if (self->pcmBuffer_.capacity() < 22050 * 4) {
+                self->pcmBuffer_.reserve(22050 * 4);
+            }
             if (self->pcmReadPos_ > 32768 && self->pcmReadPos_ * 2 >= self->pcmBuffer_.size()) {
                 self->pcmBuffer_.erase(self->pcmBuffer_.begin(),
                                        self->pcmBuffer_.begin() + static_cast<std::ptrdiff_t>(self->pcmReadPos_));
@@ -1466,93 +1197,137 @@ namespace HandTracker {
 
     std::wstring SmartVoice::normalizeText(const std::wstring& in) const {
         std::wstring out;
-        out.reserve(in.size() + 32);
+        out.reserve(in.size() + 48);
         std::size_t i = 0;
 
+        auto appendUnitAfterNumber = [&](long long unitVal) {
+            std::size_t k = i;
+            if (k < in.size() && in[k] == L' ') ++k;
+            if (k >= in.size()) return;
+            if (in[k] == L'%') {
+                out += L" ";
+                out += pluralForm((int)(unitVal % 100), L"процент", L"процента", L"процентов");
+                i = k + 1;
+            } else if (in[k] == L'\u00B0') { // '°'
+                out += L" ";
+                out += pluralForm((int)(unitVal % 100), L"градус", L"градуса", L"градусов");
+                i = k + 1;
+                if (i < in.size() && (in[i] == L'C' || in[i] == L'c' || in[i] == L'С' || in[i] == L'с')) {
+                    if (i + 1 >= in.size() || !isLetterW(in[i + 1])) {
+                        ++i;
+                    }
+                }
+            } else if (in[k] == L'\u20BD') { // '₽'
+                out += L" ";
+                out += pluralForm((int)(unitVal % 100), L"рубль", L"рубля", L"рублей");
+                i = k + 1;
+            }
+        };
+
         while (i < in.size()) {
-            // Сокращения (с проверкой границ слова, без чувствительности к заглавной первой букве)
-            if (i + 3 <= in.size()) {
-                std::wstring sub3 = toLowerSimple(in.substr(i, 3));
-                if (sub3 == L"ржя") {
-                    bool leftOk = (i == 0 || !isLetterW(in[i - 1]));
-                    bool rightOk = (i + 3 >= in.size() || !isLetterW(in[i + 3]));
-                    if (leftOk && rightOk) {
-                        out += L"русский жестовый язык";
-                        i += 3;
-                        continue;
-                    }
-                }
+            // Сокращения (с проверкой границ слова, без аллокаций на обычных символах)
+            wchar_t lc = (in[i] >= L'А' && in[i] <= L'Я') ? (in[i] + (L'а' - L'А')) : in[i];
+            if (lc == L'р' && i + 3 <= in.size() && (i == 0 || !isLetterW(in[i - 1])) &&
+                (i + 3 >= in.size() || !isLetterW(in[i + 3])) && toLowerSimple(in.substr(i, 3)) == L"ржя") {
+                out += L"русский жестовый язык";
+                i += 3;
+                continue;
             }
-            if (i + 4 <= in.size() && (i == 0 || !isLetterW(in[i - 1]))) {
-                std::wstring sub4 = toLowerSimple(in.substr(i, 4));
-                if (sub4 == L"т.д.") {
-                    out += L"так далее";
-                    i += 4;
-                    continue;
+            if (lc == L'т' && (i == 0 || !isLetterW(in[i - 1]))) {
+                if (i + 4 <= in.size()) {
+                    std::wstring sub4 = toLowerSimple(in.substr(i, 4));
+                    if (sub4 == L"т.д.") { out += L"так далее"; i += 4; continue; }
+                    if (sub4 == L"т.п.") { out += L"тому подобное"; i += 4; continue; }
+                    if (sub4 == L"т.е.") { out += L"то есть"; i += 4; continue; }
+                    if (sub4 == L"т.к.") { out += L"так как"; i += 4; continue; }
+                    if (sub4 == L"т.ч.") { out += L"том числе"; i += 4; continue; }
                 }
-                if (sub4 == L"т.п.") {
-                    out += L"тому подобное";
-                    i += 4;
-                    continue;
-                }
-                if (sub4 == L"т.е.") {
-                    out += L"то есть";
-                    i += 4;
-                    continue;
+                if (i + 5 <= in.size()) {
+                    std::wstring sub5 = toLowerSimple(in.substr(i, 5));
+                    if (sub5 == L"т. д.") { out += L"так далее"; i += 5; continue; }
+                    if (sub5 == L"т. п.") { out += L"тому подобное"; i += 5; continue; }
+                    if (sub5 == L"т. е.") { out += L"то есть"; i += 5; continue; }
+                    if (sub5 == L"т. к.") { out += L"так как"; i += 5; continue; }
+                    if (sub5 == L"т. ч.") { out += L"том числе"; i += 5; continue; }
                 }
             }
 
-            // Отрицательные числа (знак '-' / U+2212 перед цифрами, не являющийся диапазоном/дефисом)
-            if ((in[i] == L'-' || in[i] == L'\u2212') && i + 1 < in.size() && isDigitW(in[i + 1])) {
-                bool leftOk = (i == 0 || (!isDigitW(in[i - 1]) && !isLetterW(in[i - 1]) &&
-                                          in[i - 1] != L'-' && in[i - 1] != L'\u2212'));
-                if (leftOk) {
-                    std::size_t digitStart = i + 1;
-                    std::size_t j = digitStart;
-                    long long num = 0;
-                    bool tooLarge = false;
-                    while (j < in.size() && isDigitW(in[j])) {
-                        if (j - digitStart >= 12) {
-                            tooLarge = true;
-                        } else {
-                            num = num * 10 + (in[j] - L'0');
-                        }
-                        ++j;
-                    }
-                    if (!tooLarge && num <= 999999999999LL) {
-                        if (num == 0) {
-                            out += L"ноль";
-                        } else {
-                            out += L"минус ";
-                            out += numberToWords(num);
-                        }
-                    } else {
-                        out += in.substr(i, j - i);
-                    }
-                    i = j;
-                    continue;
-                }
-            }
-
-            // Числа до 999 999 999 999 (без знакового переполнения)
-            if (isDigitW(in[i])) {
-                std::size_t j = i;
+            // Числа (опционально со знаком '+'/'-'/U+2212, время HH:MM, десятичные дроби A.B / A,B, целые)
+            bool isMinus = (in[i] == L'-' || in[i] == L'\u2212');
+            bool isPlus = (in[i] == L'+');
+            bool hasSign = (isMinus || isPlus) && i + 1 < in.size() && isDigitW(in[i + 1]) &&
+                           (i == 0 || (!isDigitW(in[i - 1]) && !isLetterW(in[i - 1]) &&
+                                       in[i - 1] != L'-' && in[i - 1] != L'\u2212' && in[i - 1] != L'+'));
+            if (hasSign || isDigitW(in[i])) {
+                std::size_t dStart = hasSign ? (i + 1) : i;
+                std::size_t j = dStart;
                 long long num = 0;
                 bool tooLarge = false;
                 while (j < in.size() && isDigitW(in[j])) {
-                    if (j - i >= 12) {
-                        tooLarge = true;
-                    } else {
-                        num = num * 10 + (in[j] - L'0');
-                    }
+                    if (j - dStart >= 12) tooLarge = true;
+                    else num = num * 10 + (in[j] - L'0');
                     ++j;
                 }
+
+                // Время HH:MM (без знака)
+                if (!hasSign && !tooLarge && (j - dStart) <= 2 && num <= 23 && j + 2 < in.size() &&
+                    in[j] == L':' && isDigitW(in[j + 1]) && isDigitW(in[j + 2]) &&
+                    (j + 3 >= in.size() || !isDigitW(in[j + 3]))) {
+                    int mins = (in[j + 1] - L'0') * 10 + (in[j + 2] - L'0');
+                    if (mins <= 59) {
+                        out += numberToWords(num);
+                        out += L" ";
+                        if (in[j + 1] == L'0' && mins > 0) out += L"ноль ";
+                        out += numberToWords(mins);
+                        i = j + 3;
+                        continue;
+                    }
+                }
+
+                auto appendFemNum = [&](long long v) {
+                    if (v % 100 != 11 && v % 10 == 1) out += (v == 1) ? L"одна" : (numberToWords(v - 1) + L" одна");
+                    else if (v % 100 != 12 && v % 10 == 2) out += (v == 2) ? L"две" : (numberToWords(v - 2) + L" две");
+                    else out += numberToWords(v);
+                };
+
+                // Десятичная дробь [+/-]A.B или A,B (1..3 знака, не часть цепочки A.B.C)
+                bool prevDotAfterDigit = (i >= 2 && (in[i - 1] == L'.' || in[i - 1] == L',') && isDigitW(in[i - 2]));
+                if (!tooLarge && !prevDotAfterDigit && num <= 999999999LL && j + 1 < in.size() &&
+                    (in[j] == L'.' || in[j] == L',') && isDigitW(in[j + 1])) {
+                    std::size_t fStart = j + 1, fEnd = fStart;
+                    int fracVal = 0;
+                    while (fEnd < in.size() && isDigitW(in[fEnd]) && (fEnd - fStart) < 4) {
+                        fracVal = fracVal * 10 + (in[fEnd] - L'0');
+                        ++fEnd;
+                    }
+                    std::size_t fracLen = fEnd - fStart;
+                    bool notVersion = (fEnd >= in.size() || (in[fEnd] != L'.' && in[fEnd] != L','));
+                    if (notVersion && fracLen >= 1 && fracLen <= 3) {
+                        if (hasSign && (num != 0 || fracVal != 0)) out += isMinus ? L"минус " : L"плюс ";
+                        appendFemNum(num);
+                        out += L" ";
+                        out += pluralForm((int)(num % 100), L"целая", L"целых", L"целых");
+                        out += L" ";
+                        appendFemNum(fracVal);
+                        out += L" ";
+                        if (fracLen == 1) out += pluralForm(fracVal, L"десятая", L"десятых", L"десятых");
+                        else if (fracLen == 2) out += pluralForm(fracVal, L"сотая", L"сотых", L"сотых");
+                        else out += pluralForm(fracVal, L"тысячная", L"тысячных", L"тысячных");
+                        i = fEnd;
+                        appendUnitAfterNumber(2);
+                        continue;
+                    }
+                }
+
                 if (!tooLarge && num <= 999999999999LL) {
+                    if (hasSign && !(num == 0 && isMinus)) out += isMinus ? L"минус " : L"плюс ";
                     out += numberToWords(num);
+                    i = j;
+                    appendUnitAfterNumber(num);
                 } else {
                     out += in.substr(i, j - i);
+                    i = j;
                 }
-                i = j;
                 continue;
             }
 

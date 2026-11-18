@@ -114,8 +114,8 @@ namespace HandTracker {
         out = L"==== ОБУЧЕНИЕ ====\n";
 
         if (stat.empty() && dyn.empty()) {
-            out += L"Образцов нет. Сначала запишите жесты (раздел для администраторов, кнопка «Запись»).\n";
-            rep.brief = L"Образцов нет: сначала запишите жесты";
+            out += L"Образцов нет. Сначала запишите дактилемы (раздел для администраторов, кнопка «Запись»).\n";
+            rep.brief = L"Образцов нет: сначала запишите дактилемы";
             return rep;
         }
 
@@ -131,7 +131,7 @@ namespace HandTracker {
             }
             std::vector<std::pair<std::string, int>> few; int letters = 0;
             fewList(stat, p.minForTest, few, letters);
-            describe(L"Позы (статические жесты)", (int)stat.size(), letters, few, p.minForTest, !te.empty(), e, rep.stat, out);
+            describe(L"Позы (статические дактилемы)", (int)stat.size(), letters, few, p.minForTest, !te.empty(), e, rep.stat, out);
         }
         else out += L"Образцов поз нет.\n";
 

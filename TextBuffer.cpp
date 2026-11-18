@@ -25,15 +25,15 @@ namespace HandTracker {
         noHandFrames_ = 0;
         spaceDone_ = false;
 
-        if (code.empty()) {                 // рука есть, жест не распознан
+        if (code.empty()) {                 // рука есть, дактилема не распознана
             cand_.clear(); candFrames_ = 0;
-            // повтор той же буквы разрешаем, только если жеста не было заметное время
+            // повтор той же буквы разрешаем, только если дактилемы не было заметное время
             if (++emptyFrames_ >= stableFrames_) lockedCode_.clear();
             return 0;
         }
         emptyFrames_ = 0;
         if (code != cand_) { cand_ = code; candFrames_ = 0; }
-        if (code == lockedCode_) return 0;  // эта буква уже введена, ждём смены жеста
+        if (code == lockedCode_) return 0;  // эта буква уже введена, ждём смены дактилемы
         if (++candFrames_ >= stableFrames_) {
             wchar_t ch = letterFromCode(code);
             if (ch == 0) return 0;

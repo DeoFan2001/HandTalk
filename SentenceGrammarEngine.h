@@ -31,10 +31,12 @@ namespace HandTracker {
 
         // Основной словарь: слово -> частота
         std::unordered_map<std::wstring, int> dictionary_;
-        // Компактное хранилище записей словаря и быстрые индексы для опечаток (< 1-2 мс)
+        // Компактное хранилище записей словаря и быстрые плоские индексы для опечаток (< 1 мс)
+        static constexpr size_t kNumRuLetters = 32;
+        static constexpr size_t kMaxBucketLen = 32;
         std::vector<DictEntry> dictEntries_;
-        std::unordered_map<wchar_t, std::unordered_map<size_t, std::vector<uint32_t>>> bucketsByFirstLen_;
-        std::unordered_map<wchar_t, std::unordered_map<size_t, std::vector<uint32_t>>> bucketsBySecondLen_;
+        std::vector<std::vector<uint32_t>> bucketsByFirstLen_;
+        std::vector<std::vector<uint32_t>> bucketsBySecondLen_;
 
         // Словарь биграмм: prevWord -> (nextWord -> weight)
         std::unordered_map<std::wstring, std::unordered_map<std::wstring, int>> bigrams_;
@@ -42,7 +44,7 @@ namespace HandTracker {
 
         // Буферы набора
         std::wstring currentInputWord_;             // Текущие буквы незаконченного слова
-        std::vector<std::wstring> rawTokens_;       // Список сырых слов, как их ввели жестами/исправлением
+        std::vector<std::wstring> rawTokens_;       // Список сырых слов, как их ввели дактилемами/исправлением
         std::vector<bool> explicitCommaAfter_;      // Явная запятая после соответствующего токена rawTokens_
         std::vector<std::wstring> processedTokens_; // Список грамматически согласованных слов
         std::vector<GrammarRuleLog> ruleLogs_;      // История сработавших правил грамматики
@@ -50,12 +52,16 @@ namespace HandTracker {
         std::wstring cachedFinalSentence_;          // Итоговое предложение со знаками препинания
         wchar_t explicitEndPunct_ = 0;              // Явный знак конца (если передан в addText)
         bool qwertyMapping_ = true;                 // Автоконвертация латиницы QWERTY -> ЙЦУКЕН в addLetter()
+        std::string dataDir_;
+        std::unordered_map<std::wstring, std::vector<std::wstring>> exactFixes_;
 
         // Вспомогательные алгоритмы
-        void addSupplementalLexicon();
+        void loadSupplementalLexicon();
+        void loadExactFixes();
         void rebuildIndices();
         int getBigramWeight(const std::wstring& prev, const std::wstring& cur) const;
         int editDistance(const std::wstring& s1, const std::wstring& s2) const;
+        int editDistanceBounded(const std::wstring& s1, const std::wstring& s2, int maxDist) const;
         std::pair<std::wstring, double> findBestTypoCorrection(const std::wstring& target,
                                                                 const std::wstring& prevWord = L"",
                                                                 int* outDist = nullptr,

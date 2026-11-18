@@ -355,7 +355,7 @@ namespace HandTracker {
         add(SCR_LEARN, ID_RETRY, cv::Rect(704, 552, 218, 64));
         add(SCR_LEARN, ID_NEXT, cv::Rect(934, 552, 218, 64));
 
-        // --- «Для разработчиков», вкладка «Образцы жестов» (то, что раньше было в «Настройках») ---
+        // --- «Для разработчиков», вкладка «Образцы дактилем» (то, что раньше было в «Настройках») ---
         {
             sourceCard(SCR_DEV, 688, 488);
             const int gx = 24 + 17, gy = 464 + 46;
@@ -562,16 +562,16 @@ namespace HandTracker {
             base_.setTo(C_BG);
         }
 
-        putTextW(base_, L"HandTalk", { 262, 150 }, 70, C_TEXT, true);
-        putTextW(base_, L"Общение без барьеров", { 266, 250 }, 26, C_DIM);
-        putTextW(base_, L"Распознавайте жесты, изучайте", { 70, 372 }, 26, rgb(190, 196, 222));
+        putTextW(base_, L"TalkingHand", { 256, 162 }, 54, C_TEXT, true);
+        putTextW(base_, L"Общение без барьеров", { 258, 240 }, 24, C_DIM);
+        putTextW(base_, L"Распознавайте дактилемы, изучайте", { 70, 372 }, 26, rgb(190, 196, 222));
         putTextW(base_, L"алфавит и общайтесь", { 70, 408 }, 26, rgb(190, 196, 222));
         putTextW(base_, L"с помощью РЖЯ.", { 70, 444 }, 26, rgb(190, 196, 222));
 
         struct Item { int id; int icon; const wchar_t* title; const wchar_t* sub; };
         const Item items[3] = {
-            { ID_GO_TALK, IC_CHAT, L"Общение", L"Распознавать жесты и писать сообщения" },
-            { ID_GO_LEARN, IC_BOOK, L"Изучить алфавит", L"Узнать жесты букв" },
+            { ID_GO_TALK, IC_CHAT, L"Общение", L"Распознавать дактилемы и писать текст" },
+            { ID_GO_LEARN, IC_BOOK, L"Изучить алфавит", L"Узнать дактилемы букв" },
             { ID_GO_SETTINGS, IC_GEAR, L"Настройки", L"Параметры приложения" } };
         for (const Item& it : items) {
             cv::Rect r = rectOf(it.id);
@@ -581,13 +581,13 @@ namespace HandTracker {
             drawIcon(base_, it.icon, { r.x + 66, r.y + r.height / 2 }, 50, C_TEXT, hot ? rgb(30, 35, 47) : C_CARD);
 
             putTextW(base_, it.title, { r.x + 124, r.y + 24 }, 28, C_TEXT, true);
-            putTextW(base_, fitText(it.sub, r.width - 124 - 70, 18, false), { r.x + 124, r.y + 68 }, 18, C_DIM);
+            putTextW(base_, fitText(it.sub, r.width - 124 - 70, 17, false), { r.x + 124, r.y + 68 }, 17, C_DIM);
             drawIcon(base_, IC_CHEVRON, { r.x + r.width - 40, r.y + r.height / 2 }, 28, C_DIM, C_CARD);
         }
     }
 
     void Gui::drawTalk(const GuiState& gs, const InfoState& is) {
-        drawHeader(L"Общение", L"Общайтесь с помощью текста и жестов", IC_CHAT);
+        drawHeader(L"Общение", L"Общайтесь с помощью текста и дактилем", IC_CHAT);
 
         roundBorder(base_, videoRect(), 16, C_VIDEO, C_EDGE);
 
@@ -614,7 +614,7 @@ namespace HandTracker {
             roundBorder(base_, r, 12, bg, gs.animOn ? C_BLUE : C_EDGE);
 
             drawIcon(base_, IC_HAND, { r.x + 36, r.y + r.height / 2 }, 40, C_TEXT, bg);
-            putTextW(base_, gs.animOn ? L"Остановить анимацию" : L"Анимация жестов", { r.x + 72, r.y + 12 }, 17, C_TEXT, true);
+            putTextW(base_, gs.animOn ? L"Остановить анимацию" : L"Анимация дактилем", { r.x + 72, r.y + 12 }, 17, C_TEXT, true);
             putTextW(base_, L"Показать сообщение", { r.x + 72, r.y + 36 }, 13, C_DIM);
             putTextW(base_, L"побуквенной анимацией", { r.x + 72, r.y + 54 }, 13, C_DIM);
             drawIcon(base_, IC_CHEVRON, { r.x + r.width - 22, r.y + r.height / 2 }, 20, C_DIM, bg);
@@ -653,12 +653,12 @@ namespace HandTracker {
             IC_BOOK);
 
         roundBorder(base_, videoRect(), 16, C_VIDEO, C_EDGE);
-        button(ID_SHOW_GESTURE, gs.showRef ? L"Показать камеру" : L"Показать жест", 0, true, gs.showRef ? IC_CAMERA : IC_PLAY, 20);
+        button(ID_SHOW_GESTURE, gs.showRef ? L"Показать камеру" : L"Показать дактилему", 0, true, gs.showRef ? IC_CAMERA : IC_PLAY, 20);
 
         cv::Rect card(680, 92, 496, 548);
         roundBorder(base_, card, 20, C_CARD, C_EDGE);
         const int cx = card.x + card.width / 2;
-        centerTextX(base_, L"Ваш жест:", cx, card.y + 26, 28, C_TEXT, true);
+        centerTextX(base_, L"Ваша дактилема:", cx, card.y + 26, 28, C_TEXT, true);
 
         std::wstring big = gs.learnShown ? std::wstring(1, gs.learnShown) : std::wstring(L"?");
         centerTextX(base_, big, cx, card.y + 82, 150, gs.learnShown ? C_LETTER : rgb(56, 62, 80), true);
@@ -683,8 +683,8 @@ namespace HandTracker {
             putTextW(base_, verdict, { gx + 60, vy + 28 - lineH(36) / 2 }, 36, vcol, true);
         }
         else {
-            verdict = L"Жду жест";
-            note = gs.running ? L"Покажите жест перед камерой" : L"Камера выключена. Нажмите «Повторить»";
+            verdict = L"Жду дактилему";
+            note = gs.running ? L"Покажите дактилему перед камерой" : L"Камера выключена. Нажмите «Повторить»";
             const int w = textWidthW(verdict, 34, true), gx = cx - (60 + w) / 2;
             cv::circle(base_, { gx + 28, vy + 28 }, 28, C_BTN, cv::FILLED, cv::LINE_AA);
             drawIcon(base_, IC_HAND, { gx + 28, vy + 28 }, 34, C_DIM, C_BTN);
@@ -700,7 +700,7 @@ namespace HandTracker {
 
     // === ЭКРАН «НАСТРОЙКИ» (для пользователей) ===
     void Gui::drawSettings(const GuiState& gs) {
-        drawHeader(L"Настройки", L"Параметры приложения (сохраняются в файле handtalk.ini)", IC_GEAR);
+        drawHeader(L"Настройки", L"Параметры приложения (сохраняются в файле talkinghand.ini)", IC_GEAR);
 
         putTextW(base_, L"Распознавание", { 24, 94 }, 17, C_DIM, true);
         putTextW(base_, L"Озвучивание", { 608, 94 }, 17, C_DIM, true);
@@ -742,7 +742,7 @@ namespace HandTracker {
 
     // Вкладки раздела «Для разработчиков»
     void Gui::drawDevTabs(bool samples) {
-        button(ID_TAB_SAMPLES, L"Образцы жестов", samples ? 1 : 0, true, IC_NONE, 17);
+        button(ID_TAB_SAMPLES, L"Образцы дактилем", samples ? 1 : 0, true, IC_NONE, 17);
         button(ID_TAB_PARAMS, L"Параметры", samples ? 0 : 1, true, IC_NONE, 17);
     }
 
@@ -754,7 +754,7 @@ namespace HandTracker {
 
         cv::Rect fc(24, 504, 1152, 160);
         roundBorder(base_, fc, 16, C_CARD, C_EDGE);
-        putTextW(base_, L"Файлы (меняются вручную в handtalk.ini)", { fc.x + 16, fc.y + 11 }, 17, C_TEXT, true);
+        putTextW(base_, L"Файлы (меняются вручную в talkinghand.ini)", { fc.x + 16, fc.y + 11 }, 17, C_TEXT, true);
         for (int k = 0; k < 4; ++k) {
             const int id = SET_F_SAMPLES + k, y = fc.y + 44 + k * 26;
             putTextW(base_, Settings::title(id) + L":", { fc.x + 16, y }, 15, C_DIM);
@@ -764,9 +764,9 @@ namespace HandTracker {
         button(ID_SET_RESET, L"Сбросить параметры", 0, true, IC_REFRESH, 17);
     }
 
-    // === «ДЛЯ РАЗРАБОТЧИКОВ» - ВКЛАДКА «ОБРАЗЦЫ ЖЕСТОВ» ===
+    // === «ДЛЯ РАЗРАБОТЧИКОВ» - ВКЛАДКА «ОБРАЗЦЫ ДАКТИЛЕМ» ===
     void Gui::drawDev(const GuiState& gs) {
-        drawHeader(L"Для разработчиков", L"Образцы жестов и обучение модели", IC_GEAR);
+        drawHeader(L"Для разработчиков", L"Образцы дактилем и обучение модели", IC_GEAR);
         drawDevTabs(true);
         roundBorder(base_, videoRect(), 16, C_VIDEO, C_EDGE);
 
@@ -806,7 +806,7 @@ namespace HandTracker {
 
         cv::Rect sc(688, 394, 488, 270);
         roundBorder(base_, sc, 16, C_CARD, C_EDGE);
-        putTextW(base_, L"Образцы жестов", { sc.x + 16, sc.y + 11 }, 17, C_TEXT, true);
+        putTextW(base_, L"Образцы дактилем", { sc.x + 16, sc.y + 11 }, 17, C_TEXT, true);
         std::wstring info = std::wstring(1, ALPHABET[gs.letter].letter) + L":  поз " + std::to_wstring(gs.letterPose) +
             L",  движений " + std::to_wstring(gs.letterMove);
         putTextW(base_, info, { sc.x + 16, sc.y + 44 }, 18, C_TEXT);

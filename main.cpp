@@ -1,4 +1,4 @@
-﻿// main.cpp - HandTalk: переводчик дактильной азбуки РЖЯ (окно с кнопками)
+﻿// main.cpp - TalkingHand: переводчик дактильной азбуки РЖЯ (окно с кнопками)
 //
 // Порядок работы цикла:
 //   кнопки -> кадр -> поиск и ведение рук (нейросети) -> распознавание позы и движения -> текст -> окно.
@@ -150,13 +150,13 @@ int main() {
     cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_SILENT);
     SetConsoleOutputCP(CP_UTF8);
 
-    logOpen("handtalk.log");
-    logInfo("=== Запуск HandTalk ===");
+    logOpen("talkinghand.log");
+    logInfo("=== Запуск TalkingHand ===");
 
     // === НАСТРОЙКИ ===
     Settings st;
-    int errs = st.load("handtalk.ini");
-    if (errs) logWarn("В handtalk.ini строк с ошибками: " + std::to_string(errs) + " (взяты значения по умолчанию)");
+    int errs = st.load("talkinghand.ini");
+    if (errs) logWarn("В talkinghand.ini строк с ошибками: " + std::to_string(errs) + " (взяты значения по умолчанию)");
 
     // === НЕЙРОСЕТИ РУКИ ===
     PalmDetector palm;
@@ -164,7 +164,7 @@ int main() {
     if (!palm.init("models\\palm_detection.onnx") || !lm.init("models\\hand_landmark.onnx")) {
         logError("Не удалось загрузить модели из папки models");
         MessageBoxW(nullptr, L"Не найдены файлы моделей в папке models:\npalm_detection.onnx и hand_landmark.onnx.",
-            L"HandTalk", MB_ICONERROR);
+            L"TalkingHand", MB_ICONERROR);
         return -1;
     }
 
@@ -194,7 +194,7 @@ int main() {
     logInfo("Классификатор: " + std::string(clf->name()) + ", поз: " + std::to_string(knn.size()) +
         ", движений: " + std::to_string(dynKnn.size()));
 
-    // === ДВИЖОК ЖЕСТОВ И ТЕКСТА ===
+    // === ДВИЖОК ДАКТИЛЕМ И ТЕКСТА ===
     EngineParams ep;
     ep.minConfidence = st.minConfidence;
     ep.dynMinConfidence = st.dynMinConfidence;
@@ -243,7 +243,7 @@ int main() {
         };
 
     // === ОКНО ===
-    const std::string WIN = "HandTalk";
+    const std::string WIN = "TalkingHand";
     Gui gui(WIN);
     gui.init();
 
@@ -272,13 +272,13 @@ int main() {
     auto setMessage = [&](const std::wstring& m, double sec = 7.0) { message = m; messageUntil = seconds() + sec; };
     if (!speechNote.empty()) setMessage(speechNote, 10);
     else if (knn.size() == 0 && dynKnn.size() == 0)
-        setMessage(L"Образцов жестов нет: запишите их в «Настройки» - «Для разработчиков» и нажмите «Обучить модель»", 12);
+        setMessage(L"Образцов дактилем нет: запишите их в «Настройки» - «Для разработчиков» и нажмите «Обучить модель»", 12);
 
-    // Настройка изменена: обновляем значения в окне и сразу записываем handtalk.ini
+    // Настройка изменена: обновляем значения в окне и сразу записываем talkinghand.ini
     auto settingsChanged = [&]() {
         for (int i = 0; i < SET_COUNT; ++i) gs.setVals[i] = st.valueText(i);
-        if (st.save("handtalk.ini")) setMessage(L"Сохранено в handtalk.ini. Заработает после перезапуска программы", 5);
-        else { logWarn("Не удалось записать handtalk.ini"); setMessage(L"Не удалось записать handtalk.ini: нет доступа к папке программы", 8); }
+        if (st.save("talkinghand.ini")) setMessage(L"Сохранено в talkinghand.ini. Заработает после перезапуска программы", 5);
+        else { logWarn("Не удалось записать talkinghand.ini"); setMessage(L"Не удалось записать talkinghand.ini: нет доступа к папке программы", 8); }
         };
 
     auto refreshCounts = [&]() {
@@ -536,8 +536,8 @@ int main() {
             if (k < gs.cameras.size()) {
                 gs.camera = gs.cameras[k];
                 gs.source = 0;
-                st.cameraIndex = gs.camera;                 // запоминаем выбор в handtalk.ini
-                st.save("handtalk.ini");
+                st.cameraIndex = gs.camera;                 // запоминаем выбор в talkinghand.ini
+                st.save("talkinghand.ini");
             }
             return;
         }
@@ -642,8 +642,8 @@ int main() {
             else {
                 gs.recording = true; gs.recCount = 0; saveSkip = 0;
                 setMessage(gs.kindMove
-                    ? L"Запись движения: покажите жест и остановите руку на секунду. Повторите 20-30 раз"
-                    : L"Запись позы: держите жест неподвижно, меняйте наклон руки и расстояние до камеры", 12);
+                    ? L"Запись движения: покажите дактилему и остановите руку на секунду. Повторите 20-30 раз"
+                    : L"Запись позы: держите дактилему неподвижно, меняйте наклон руки и расстояние до камеры", 12);
             }
             break;
         case ID_TRAIN: {
@@ -895,7 +895,7 @@ int main() {
             is.artLetter = std::wstring(1, ALPHABET[t].letter);
             if (!refFrame.empty()) {
                 is.refVideo = refFrame;
-                is.artCaption = L"Повторите жест, как на видео";
+                is.artCaption = L"Повторите дактилему, как на видео";
             }
             else {
                 is.artCaption = L"Эталон";

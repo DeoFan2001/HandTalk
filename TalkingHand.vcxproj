@@ -22,33 +22,33 @@
     <VCProjectVersion>18.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{ffb52a0c-e5ad-4d27-aa12-ae763167a7d0}</ProjectGuid>
-    <RootNamespace>HandTalk</RootNamespace>
+    <RootNamespace>TalkingHand</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -133,7 +133,8 @@
       <EnableSegmentHeap>true</EnableSegmentHeap>
     </Manifest>
     <PostBuildEvent>
-      <Command>xcopy /y "$(ProjectDir)third_party\sherpa-onnx\lib\onnxruntime.dll" "$(OutDir)"
+      <Command>%(Command)
+xcopy /y "$(ProjectDir)third_party\sherpa-onnx\lib\onnxruntime.dll" "$(OutDir)"
 xcopy /y "$(ProjectDir)third_party\sherpa-onnx\lib\onnxruntime_providers_shared.dll" "$(OutDir)"
 xcopy /y "$(ProjectDir)third_party\sherpa-onnx\lib\sherpa-onnx-c-api.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
@@ -157,7 +158,8 @@ xcopy /y "$(ProjectDir)third_party\sherpa-onnx\lib\sherpa-onnx-c-api.dll" "$(Out
       <EnableSegmentHeap>true</EnableSegmentHeap>
     </Manifest>
     <PostBuildEvent>
-      <Command>xcopy /y "$(ProjectDir)third_party\sherpa-onnx\lib\onnxruntime.dll" "$(OutDir)"
+      <Command>%(Command)
+xcopy /y "$(ProjectDir)third_party\sherpa-onnx\lib\onnxruntime.dll" "$(OutDir)"
 xcopy /y "$(ProjectDir)third_party\sherpa-onnx\lib\onnxruntime_providers_shared.dll" "$(OutDir)"
 xcopy /y "$(ProjectDir)third_party\sherpa-onnx\lib\sherpa-onnx-c-api.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
@@ -167,10 +169,8 @@ xcopy /y "$(ProjectDir)third_party\sherpa-onnx\lib\sherpa-onnx-c-api.dll" "$(Out
     <ClInclude Include="Gesture.h" />
     <ClInclude Include="GestureEngine.h" />
     <ClInclude Include="Gui.h" />
-    <ClInclude Include="HandArt.h" />
     <ClInclude Include="HandTracker.h" />
     <ClInclude Include="Log.h" />
-    <ClInclude Include="miniaudio.h" />
     <ClInclude Include="MlpClassifier.h" />
     <ClInclude Include="Motion.h" />
     <ClInclude Include="ScreenCapture.h" />
@@ -178,7 +178,6 @@ xcopy /y "$(ProjectDir)third_party\sherpa-onnx\lib\sherpa-onnx-c-api.dll" "$(Out
     <ClInclude Include="Settings.h" />
     <ClInclude Include="sherpa-onnx\c-api\c-api.h" />
     <ClInclude Include="SmartVoice.h" />
-    <ClInclude Include="Speech.h" />
     <ClInclude Include="Text.h" />
     <ClInclude Include="TextBuffer.h" />
     <ClInclude Include="TextRender.h" />
@@ -192,7 +191,6 @@ xcopy /y "$(ProjectDir)third_party\sherpa-onnx\lib\sherpa-onnx-c-api.dll" "$(Out
     <ClCompile Include="Gesture.cpp" />
     <ClCompile Include="GestureEngine.cpp" />
     <ClCompile Include="Gui.cpp" />
-    <ClCompile Include="HandArt.cpp" />
     <ClCompile Include="HandTracker.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="main.cpp" />
@@ -202,7 +200,6 @@ xcopy /y "$(ProjectDir)third_party\sherpa-onnx\lib\sherpa-onnx-c-api.dll" "$(Out
     <ClCompile Include="SentenceGrammarEngine.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="SmartVoice.cpp" />
-    <ClCompile Include="Speech.cpp" />
     <ClCompile Include="TextBuffer.cpp" />
     <ClCompile Include="TextRender.cpp" />
     <ClCompile Include="Trainer.cpp" />

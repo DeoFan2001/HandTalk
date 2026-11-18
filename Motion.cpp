@@ -124,7 +124,7 @@ namespace HandTracker {
     static float seqDist(const SeqFeatures& a, const SeqFeatures& b) {
         float s = 0;
         for (std::size_t i = 0; i < a.size(); ++i) { float d = a[i] - b[i]; s += d * d; }
-        return std::sqrt(s / (SEQ_LEN * 21.0f));       // та же шкала, что у обычных жестов (на точку и на шаг)
+        return std::sqrt(s / (SEQ_LEN * 21.0f));       // та же шкала, что у обычных дактилем (на точку и на шаг)
     }
 
     GestureResult SeqKnn::classify(const SeqFeatures& f) const {
